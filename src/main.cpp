@@ -26,8 +26,14 @@ OpenCl *opencl;
 uint64_t *init_state, *init_seq;
 
 vector<string> bufferNames = {
-    "q_list",
+    "particle_x",
+    "particle_y",
+    "iter_count",
 
+    "path",
+
+    // Noise
+    "q_list",
     "state",
     "inc",
     "init_state",
@@ -38,7 +44,13 @@ vector<size_t> bufferSizes;
 void setBufferSizes() {
     bufferSizes = {
         config->particle_count * sizeof(float),
+        config->particle_count * sizeof(float),
+        config->particle_count * sizeof(uint32_t),
 
+        config->particle_count * config->thresholds[config->threshold_count - 1],
+
+        // Noise
+        config->particle_count * sizeof(float),
         config->particle_count * sizeof(uint64_t),
         config->particle_count * sizeof(uint64_t),
         config->particle_count * sizeof(uint64_t),
