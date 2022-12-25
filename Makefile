@@ -7,7 +7,7 @@ SRC	= $(wildcard $(SRCDIR)*.cpp)
 
 CC = g++ -std=c++17
 
-WARNFLAGS = -Wall -Wno-deprecated-declarations
+WARNFLAGS = -Wall -Wno-deprecated-declarations -Wno-writable-strings
 CFLAGS = -g -O3 $(WARNFLAGS) -Iinclude/ -I./ -I/usr/local/include
 
 LDFLAGS =-framework opencl -framework GLUT -framework OpenGL -framework Cocoa -L/usr/local/lib -lGLEW
