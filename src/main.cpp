@@ -18,6 +18,16 @@ using namespace std;
 
 Config *config;
 
+typedef struct Particle {
+    float x, y;
+    float cx, cy;
+    uint32_t iter_count;
+} Particle;
+
+typedef struct FractalCoord {
+    float x, y;
+} FractalCoord;
+
 /**
  * OpenCL
  */
@@ -26,8 +36,13 @@ OpenCl *opencl;
 uint64_t *init_state, *init_seq;
 
 vector<string> bufferNames = {
-    "particle_x",
-    "particle_y",
+    "image",
+
+    "count0",
+    "count1",
+    "count2",
+
+    "particles",
     "iter_count",
 
     "path",
@@ -43,11 +58,19 @@ vector<string> bufferNames = {
 vector<size_t> bufferSizes;
 void setBufferSizes() {
     bufferSizes = {
-        config->particle_count * sizeof(float),
-        config->particle_count * sizeof(float),
-        config->particle_count * sizeof(uint32_t),
+        // Image
+        3 * config->width * config->height * sizeof(uint32_t),
 
-        config->particle_count * config->thresholds[config->threshold_count - 1],
+        // Thresholdcounts
+        config->width * config->height * sizeof(uint32_t),
+        config->width * config->height * sizeof(uint32_t),
+        config->width * config->height * sizeof(uint32_t),
+
+        // Particles
+        config->particle_count * sizeof(Particle),
+
+        // Path
+        config->particle_count * config->thresholds[config->threshold_count - 1] * sizeof(FractalCoord),
 
         // Noise
         config->particle_count * sizeof(float),
