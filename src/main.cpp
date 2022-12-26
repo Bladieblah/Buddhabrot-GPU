@@ -35,56 +35,31 @@ typedef struct FractalCoord {
 OpenCl *opencl;
 uint64_t *init_state, *init_seq;
 
-vector<string> bufferNames = {
-    "image",
+vector<BufferArgument> bufferArgs;
+void createBufferArgs() {
+    bufferArgs = {
+        {"image",     {NULL, 3 * config->width * config->height * sizeof(uint32_t)}},
+        {"count0",    {NULL, config->width * config->height * sizeof(uint32_t)}},
+        {"count1",    {NULL, config->width * config->height * sizeof(uint32_t)}},
+        {"count2",    {NULL, config->width * config->height * sizeof(uint32_t)}},
+        {"particles", {NULL, config->particle_count * sizeof(Particle)}},
+        {"path",      {NULL, config->particle_count * config->thresholds[config->threshold_count - 1] * sizeof(FractalCoord)}},
 
-    "count0",
-    "count1",
-    "count2",
-
-    "particles",
-    "iter_count",
-
-    "path",
-
-    // Noise
-    "q_list",
-    "state",
-    "inc",
-    "init_state",
-    "init_seq",
-};
-
-vector<size_t> bufferSizes;
-void setBufferSizes() {
-    bufferSizes = {
-        // Image
-        3 * config->width * config->height * sizeof(uint32_t),
-
-        // Thresholdcounts
-        config->width * config->height * sizeof(uint32_t),
-        config->width * config->height * sizeof(uint32_t),
-        config->width * config->height * sizeof(uint32_t),
-
-        // Particles
-        config->particle_count * sizeof(Particle),
-
-        // Path
-        config->particle_count * config->thresholds[config->threshold_count - 1] * sizeof(FractalCoord),
-
-        // Noise
-        config->particle_count * sizeof(float),
-        config->particle_count * sizeof(uint64_t),
-        config->particle_count * sizeof(uint64_t),
-        config->particle_count * sizeof(uint64_t),
-        config->particle_count * sizeof(uint64_t),
+        {"q_list",     {NULL, config->particle_count * sizeof(float)}},
+        {"state",      {NULL, config->particle_count * sizeof(uint64_t)}},
+        {"inc",        {NULL, config->particle_count * sizeof(uint64_t)}},
+        {"init_state", {NULL, config->particle_count * sizeof(uint64_t)}},
+        {"init_seq",   {NULL, config->particle_count * sizeof(uint64_t)}},
     };
 }
 
-vector<string> kernelNames = {
-    "seed_noise",
-    "fill_noise",
-};
+vector<KernelArgument> kernelArgs;
+void createKernelArgs() {
+    kernelArgs = {
+        {"seed_noise", {NULL, 1, {config->particle_count, 0}, "seed_noise"}},
+        {"fill_noise", {NULL, 1, {config->particle_count, 0}, "fill_noise"}},
+    };
+}
 
 void setKernelArgs() {
     opencl->setKernelBufferArg("seed_noise", "state", 0);
@@ -110,18 +85,21 @@ void initPcg() {
 }
 
 void prepareOpenCl() {
-    setBufferSizes();
+    fprintf(stderr, "createBufferArgs\n");
+    createBufferArgs();
+    fprintf(stderr, "createKernelArgs\n");
+    createKernelArgs();
 
+    fprintf(stderr, "OpenCl\n");
     opencl = new OpenCl(
-        config->particle_count,
         "shaders/buddha.cl",
-        false,
-        bufferNames,
-        bufferSizes,
-        kernelNames
+        bufferArgs,
+        kernelArgs
     );
 
+    fprintf(stderr, "setKernelArgs\n");
     setKernelArgs();
+    fprintf(stderr, "initPcg\n");
     initPcg();
 }
 

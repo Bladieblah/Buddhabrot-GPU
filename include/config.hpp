@@ -31,7 +31,7 @@ private:
         {"particle_count", {'i', (void *)&particle_count}},
 
         {"threshold_count", {'i', (void *)&threshold_count}},
-        {"threshold0", {'i', (void *)&(thresholds[0])}},
+        {"threshold0", {'i', (void *)thresholds}},
         {"threshold1", {'i', (void *)&(thresholds[1])}},
         {"threshold2", {'i', (void *)&(thresholds[2])}},
         // {"threshold3", {'i', (void *)&(thresholds[3])}},

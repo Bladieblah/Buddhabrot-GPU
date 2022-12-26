@@ -19,10 +19,27 @@ typedef struct OpenClBuffer {
     size_t size;
 } OpenClBuffer;
 
+typedef struct BufferArgument {
+    std::string name;
+    OpenClBuffer buffer;
+} BufferArgument;
+
+typedef struct OpenClKernel {
+    cl_kernel kernel;
+    cl_uint work_dim;
+    size_t item_size[2];
+    std::string name;
+} OpenClKernel;
+
+typedef struct KernelArgument {
+    std::string name;
+    OpenClKernel kernel;
+} KernelArgument;
+
 class OpenCl {
 public:
-    OpenCl(size_t size_x, char *filename, bool dualKernel, std::vector<std::string> bufferNames, std::vector<size_t> bufferSizes, std::vector<std::string> kernelNames, bool useGpu = true);
-    void prepare(std::vector<std::string> bufferNames, std::vector<size_t> bufferSizes, std::vector<std::string> kernelNames);
+    OpenCl(char *filename, std::vector<BufferArgument> bufferArgs, std::vector<KernelArgument> kernelArgs, bool useGpu = true);
+    void prepare(std::vector<BufferArgument> bufferArgs, std::vector<KernelArgument> kernelArgs);
     void setDevice();
     void getPlatformIds();
     void setKernelArg(std::string kernelName, cl_uint arg_index, size_t size, void *pointer);
@@ -48,7 +65,7 @@ public:
 
 
     cl_program program;
-    std::map<std::string, cl_kernel> kernels;
+    std::map<std::string, OpenClKernel> kernels;
     std::map<std::string, OpenClBuffer> buffers;
     cl_uint ret_num_devices;
     cl_uint ret_num_platforms;
@@ -62,7 +79,6 @@ public:
     size_t local_item_size[1];
 
     char *filename;
-    bool dualKernel;
     bool use_gpu;
 };
 
