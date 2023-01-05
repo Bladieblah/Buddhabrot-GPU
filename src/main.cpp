@@ -19,13 +19,13 @@ using namespace std;
 Config *config;
 
 typedef struct Particle {
-    float x, y;
-    float cx, cy;
+    cl_float2 pos;
+    cl_float2 offset;
     uint32_t iter_count;
 } Particle;
 
 typedef struct FractalCoord {
-    float x, y;
+    cl_float2 pos;
 } FractalCoord;
 
 /**
@@ -39,11 +39,10 @@ vector<BufferArgument> bufferArgs;
 void createBufferArgs() {
     bufferArgs = {
         {"image",     {NULL, 3 * config->width * config->height * sizeof(uint32_t)}},
-        {"count0",    {NULL, config->width * config->height * sizeof(uint32_t)}},
-        {"count1",    {NULL, config->width * config->height * sizeof(uint32_t)}},
-        {"count2",    {NULL, config->width * config->height * sizeof(uint32_t)}},
+        {"count",     {NULL, 3 * config->width * config->height * sizeof(uint32_t)}},
         {"particles", {NULL, config->particle_count * sizeof(Particle)}},
         {"path",      {NULL, config->particle_count * config->thresholds[config->threshold_count - 1] * sizeof(FractalCoord)}},
+        {"threshold", {NULL, config->threshold_count * sizeof(uint32_t)}},
 
         {"q_list",     {NULL, config->particle_count * sizeof(float)}},
         {"state",      {NULL, config->particle_count * sizeof(uint64_t)}},

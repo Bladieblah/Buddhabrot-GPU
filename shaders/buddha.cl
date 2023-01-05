@@ -1,7 +1,11 @@
 __constant sampler_t sampler = CLK_NORMALIZED_COORDS_TRUE | CLK_FILTER_NEAREST | CLK_ADDRESS_NONE;
 
-__constant ulong pcg_shift = 6364136223846793005ULL;
-__constant float pcg_max_1 = 4294967296.0;
+/**
+ * RNG stuff
+ */
+
+__constant ulong PCG_SHIFT = 6364136223846793005ULL;
+__constant float PCG_MAX_1 = 4294967296.0;
 
 #define PDF_SIDES 100
 #define PDF_SIZE 201
@@ -42,7 +46,7 @@ __constant float d[] = {
     3.754408661907416e+00
 };
 
-double inverseNormalCdf(double uniform) {
+__inline double inverseNormalCdf(double uniform) {
 	double q, r;
 
 	if (uniform <= 0) {
@@ -73,7 +77,7 @@ double inverseNormalCdf(double uniform) {
 
 inline ulong pcg32_random_r(global ulong *state, global ulong *inc, int x) {
     ulong oldstate = state[x];
-    state[x] = oldstate * pcg_shift + inc[x];
+    state[x] = oldstate * PCG_SHIFT + inc[x];
     uint xorshifted = ((oldstate >> 18u) ^ oldstate) >> 27u;
     uint rot = oldstate >> 59u;
     uint pcg = (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
@@ -96,5 +100,101 @@ __kernel void fill_noise(global float *q_list, global ulong *state, global ulong
 
     uint pcg = pcg32_random_r(state, inc, x);
 
-    q_list[x] = (float)pcg / pcg_max_1;
-} 
+    q_list[x] = (float)pcg / PCG_MAX_1;
+}
+
+/**
+ * Complex math stuff
+ */
+
+ inline float2 cmul(float2 a, float2 b) {
+    return (float2)( a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x);
+ }
+
+ inline float2 csquare(float2 z) {
+    return (float2)( z.x * z.x - z.y * z.y, 2 * z.y * z.x);
+ }
+
+ inline float cnorm(float2 z) {
+    return z.x * z.x + z.y + z.y;
+ }
+
+__constant float2 VIEW_CENTER = {-0.5, 0.};
+__constant float SCALE = 1.3;
+__constant float VIEW_ANGLE = 0;
+
+/**
+ * Coordinate transformations
+ */
+
+ inline int2 fractalToPixel(float2 fractalCoord, int2 resolution)
+
+/**
+ * Fractal stuff
+ */
+
+typedef struct Particle {
+    float2 pos;
+    float2 offset;
+    unsigned int iterCount;
+} Particle;
+
+inline int matchThreshold(
+    Particle particle,
+    global unsigned int *threshold,
+    int thresholdCount
+) {
+    for (int i = 0; i < thresholdCount; i++) {
+        if (particle.iterCount <= threshold[i]) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+inline void addToPath(
+    Particle particle,
+    global float2 *path,
+    global unsigned int *count,
+    global unsigned int *threshold,
+    int thresholdCount,
+    unsigned int pathStart,
+    int2 resolution,
+    int thresholdIndex
+) {
+    unsigned int pixelCount = resolution.x * resolution.y;
+    for (unsigned int i = 0; i < particle.iterCount; i++) {
+        int2 pixel = fractalToPixel(path[pathStart + i]);
+        count[thresholdIndex * pixelCount + resolution.x * pixel.y + pixel.x]++;
+    }
+}
+
+__kernel void mandelStep(
+    global Particle *particles,
+    global float2 *path,
+    global unsigned int *count,
+    global unsigned int *threshold,
+    int thresholdCount,
+    int2 resolution
+) {
+    const int x = get_global_id(0);
+    const unsigned int maxLength = threshold[thresholdCount - 1];
+    const unsigned int pathIndex = x * maxLength;
+
+    Particle particle = particles[x];
+
+    particle.pos = csquare(particle.pos) + particle.offset;
+    path[pathIndex + particle.iterCount] = particle.pos;
+    particle.iterCount++;
+
+    if (cnorm(particle.pos) > 4) {
+        int thresholdIndex = matchThreshold(particle, threshold, thresholdCount);
+        addToPath(particle, path, count, threshold, thresholdCount, pathIndex, resolution, thresholdIndex);
+        resetParticle(particle);
+    }
+
+    if (particle.iterCount == maxLength) {
+        resetParticle(particle);
+    }
+}
