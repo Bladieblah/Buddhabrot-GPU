@@ -178,7 +178,7 @@ inline int matchThreshold(
     return -1;
 }
 
-inline void addToPath(
+inline void addPath(
     Particle particle,
     global float2 *path,
     global unsigned int *count,
@@ -190,20 +190,28 @@ inline void addToPath(
 ) {
     unsigned int pixelCount = resolution.x * resolution.y;
     for (unsigned int i = 0; i < particle.iterCount; i++) {
-        int2 pixel = fractalToPixel(path[pathStart + i]);
+        int2 pixel = fractalToPixel(path[pathStart + i], resolution);
         count[thresholdIndex * pixelCount + resolution.x * pixel.y + pixel.x]++;
     }
 }
 
-inline void resetParticle(Particle particle,
-    global float *path,
+inline void resetParticle(
+    Particle particle,
+    global float2 *path,
     unsigned int pathStart,
+    global ulong *randomState,
     global ulong *randomIncrement,
-    global ulong *randomState
+    int x
 ) {
-    float2 newConst = (float2())
+    float2 newOffset = (float2)(
+        (9. * uniformRand(randomState, randomIncrement, x) - 5.2),
+        (6. * uniformRand(randomState, randomIncrement, x) - 3.)
+    );
+
     particle.iterCount = 1;
-    particle.
+    particle.pos = newOffset;
+    particle.offset = newOffset;
+    path[pathStart] = newOffset;
 }
 
 __kernel void mandelStep(
@@ -213,8 +221,8 @@ __kernel void mandelStep(
     global unsigned int *threshold,
     int thresholdCount,
     global float2 *path,
-    global ulong *randomIncrement,
-    global ulong *randomState
+    global ulong *randomState,
+    global ulong *randomIncrement
 ) {
     const int x = get_global_id(0);
     const unsigned int maxLength = threshold[thresholdCount - 1];
@@ -228,11 +236,76 @@ __kernel void mandelStep(
 
     if (cnorm(particle.pos) > 4) {
         int thresholdIndex = matchThreshold(particle, threshold, thresholdCount);
-        addToPath(particle, path, count, threshold, thresholdCount, pathIndex, resolution, thresholdIndex);
-        resetParticle(particle);
+        addPath(particle, path, count, threshold, thresholdCount, pathIndex, resolution, thresholdIndex);
+        resetParticle(particle, path, pathIndex, randomState, randomIncrement, x);
     }
 
     if (particle.iterCount == maxLength) {
-        resetParticle(particle);
+        resetParticle(particle, path, pathIndex, randomState, randomIncrement, x);
+    }
+}
+
+/**
+ * Global operations, to be optimised later
+ */
+
+__kernel void findMax1(global unsigned int *count, global unsigned int *maxima, int2 resolution) {
+    const int x = get_global_id(0);
+    maxima[x] = 0;
+
+    for (int i = x * resolution.x; i < (x + 1) * resolution.x; i++) {
+        if (count[i] > maxima[x]) {
+            maxima[x] = count[i];
+        }
+    }
+}
+
+__kernel void findMax2(global unsigned int *maxima, global unsigned int *maximum, int2 resolution) {
+    const int x = get_global_id(0);
+    maximum[x] = 0;
+
+    for (int i = x * resolution.y; i < (x + 1) * resolution.y; i++) {
+        if (maxima[i] > maximum[x]) {
+            maximum[x] = maxima[i];
+        }
+    }
+}
+
+/**
+ * Rendering
+ */
+
+__constant float COLOR_SCHEME[4][3] = {
+    {0.3, 0.0, 0.5,},
+    {0.0, 0.5, 0.3,},
+    {0.6, 0.5, 0.0,},
+    {0.1, 0.0, 0.2,},
+};
+
+__constant float IMAGE_MAX = 4294967295.0;
+
+ __kernel void renderImage(
+    global unsigned int *count,
+    global unsigned int *maximum,
+    global unsigned int *image,
+    int thresholdCount
+) {
+    const int x = get_global_id(0);
+    const int y = get_global_id(1);
+
+    const int W = get_global_size(0);
+    const int H = get_global_size(1);
+
+    const unsigned int pixelOffset = W * x + y;
+    unsigned int pixelCount = W * H;
+    const unsigned int imageOffset = thresholdCount * pixelOffset;
+
+    for (int j = 0; j < 3; j++) {
+        image[imageOffset + j] = 0;
+
+        for (int i = 0; i < thresholdCount; i++) {
+            float countFraction = (float)count[i * pixelCount + pixelOffset] / (float)maximum[i];
+            image[imageOffset + j] += (int)(COLOR_SCHEME[i][j] * sqrt(countFraction) * IMAGE_MAX);
+        }
     }
 }
