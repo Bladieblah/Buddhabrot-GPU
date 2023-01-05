@@ -75,9 +75,9 @@ __inline double inverseNormalCdf(double uniform) {
 	}
 }
 
-inline ulong pcg32_random_r(global ulong *state, global ulong *inc, int x) {
-    ulong oldstate = state[x];
-    state[x] = oldstate * PCG_SHIFT + inc[x];
+inline ulong pcg32Random(global ulong *randomState, global ulong *randomIncrement, int x) {
+    ulong oldstate = randomState[x];
+    randomState[x] = oldstate * PCG_SHIFT + randomIncrement[x];
     uint xorshifted = ((oldstate >> 18u) ^ oldstate) >> 27u;
     uint rot = oldstate >> 59u;
     uint pcg = (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
@@ -85,22 +85,35 @@ inline ulong pcg32_random_r(global ulong *state, global ulong *inc, int x) {
     return pcg;
 }
 
-__kernel void seed_noise(global ulong *state, global ulong *inc, global ulong *init_state, global ulong *init_seq) {
+__kernel void seedNoise(
+    global ulong *randomState,
+    global ulong *randomIncrement,
+    global ulong *initState,
+    global ulong *initSeq
+) {
     const int x = get_global_id(0);
 
-    state[x] = 0U;
-    inc[x] = (init_seq[x] << 1u) | 1u;
-    pcg32_random_r(state, inc, x);
-    state[x] += init_state[x];
-    pcg32_random_r(state, inc, x);
+    randomState[x] = 0U;
+    randomIncrement[x] = (initSeq[x] << 1u) | 1u;
+    pcg32Random(randomState, randomIncrement, x);
+    randomState[x] += initState[x];
+    pcg32Random(randomState, randomIncrement, x);
 }
 
-__kernel void fill_noise(global float *q_list, global ulong *state, global ulong *inc) {
+__kernel void fillNoise(global float *q_list, global ulong *randomState, global ulong *randomIncrement) {
     const int x = get_global_id(0);
 
-    uint pcg = pcg32_random_r(state, inc, x);
+    uint pcg = pcg32Random(randomState, randomIncrement, x);
 
     q_list[x] = (float)pcg / PCG_MAX_1;
+}
+
+inline float uniformRand(
+    global ulong *randomState,
+    global ulong *randomIncrement,
+    int x
+) {
+    return (float)pcg32Random(randomState, randomIncrement, x) / PCG_MAX_1;
 }
 
 /**
@@ -119,15 +132,27 @@ __kernel void fill_noise(global float *q_list, global ulong *state, global ulong
     return z.x * z.x + z.y + z.y;
  }
 
-__constant float2 VIEW_CENTER = {-0.5, 0.};
-__constant float SCALE = 1.3;
-__constant float VIEW_ANGLE = 0;
-
 /**
  * Coordinate transformations
  */
 
- inline int2 fractalToPixel(float2 fractalCoord, int2 resolution)
+__constant float2 VIEW_CENTER = {-0.5, 0.};
+__constant float SCALE = 1.3;
+__constant float VIEW_ANGLE = 0;
+
+// Transform fractal coordinates to screen coordinates, following openGL conventions
+// The viewport spans [-1,1] in both dimensions
+inline float2 fractalToScreen(float2 fractalCoord) {
+    return (fractalCoord - VIEW_CENTER) / SCALE;
+}
+
+inline int2 screenToPixel(float2 screenCoord, int2 resolution) {
+    return (int2)( (float)0.5 * ((float)1. + screenCoord) * resolution);
+}
+
+ inline int2 fractalToPixel(float2 fractalCoord, int2 resolution) {
+    return screenToPixel(fractalToScreen(fractalCoord), resolution);
+ }
 
 /**
  * Fractal stuff
@@ -170,13 +195,26 @@ inline void addToPath(
     }
 }
 
+inline void resetParticle(Particle particle,
+    global float *path,
+    unsigned int pathStart,
+    global ulong *randomIncrement,
+    global ulong *randomState
+) {
+    float2 newConst = (float2())
+    particle.iterCount = 1;
+    particle.
+}
+
 __kernel void mandelStep(
     global Particle *particles,
-    global float2 *path,
     global unsigned int *count,
+    int2 resolution,
     global unsigned int *threshold,
     int thresholdCount,
-    int2 resolution
+    global float2 *path,
+    global ulong *randomIncrement,
+    global ulong *randomState
 ) {
     const int x = get_global_id(0);
     const unsigned int maxLength = threshold[thresholdCount - 1];
