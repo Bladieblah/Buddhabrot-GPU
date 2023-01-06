@@ -9,17 +9,17 @@ using namespace std;
 
 OpenCl::OpenCl(
     char *filename,
-    vector<BufferArgument> bufferArgs,
-    vector<KernelArgument> kernelArgs,
+    vector<BufferSpec> bufferSpecs,
+    vector<KernelSpec> kernelSpecs,
     bool useGpu
 ) {
     this->filename = filename;
     this->use_gpu = useGpu;
     
-    this->prepare(bufferArgs, kernelArgs);
+    this->prepare(bufferSpecs, kernelSpecs);
 }
 
-void OpenCl::prepare(vector<BufferArgument> bufferArgs, vector<KernelArgument> kernelArgs) {
+void OpenCl::prepare(vector<BufferSpec> bufferSpecs, vector<KernelSpec> kernelSpecs) {
     FILE *fp;
     fp = fopen(this->filename, "r");
     if (!fp) {
@@ -42,18 +42,18 @@ void OpenCl::prepare(vector<BufferArgument> bufferArgs, vector<KernelArgument> k
     command_queue = clCreateCommandQueue(context, device_id, 0, &ret);
 
     // Create buffers
-    for (BufferArgument bufferArg : bufferArgs) {
-        bufferArg.buffer.buffer = clCreateBuffer(
+    for (BufferSpec bufferSpec : bufferSpecs) {
+        bufferSpec.buffer.buffer = clCreateBuffer(
             context,
             CL_MEM_READ_WRITE,
-            bufferArg.buffer.size,
+            bufferSpec.buffer.size,
             NULL, &ret
         );
 
         if (ret != CL_SUCCESS)
-            fprintf(stderr, "Failed on function clCreateBuffer for buffer %s: %d\n", bufferArg.name.c_str(), ret);
+            fprintf(stderr, "Failed on function clCreateBuffer for buffer %s: %d\n", bufferSpec.name.c_str(), ret);
 
-        buffers[bufferArg.name] = bufferArg.buffer;
+        buffers[bufferSpec.name] = bufferSpec.buffer;
     }
 
     // Create kernel program from source file
@@ -73,13 +73,13 @@ void OpenCl::prepare(vector<BufferArgument> bufferArgs, vector<KernelArgument> k
     fprintf(stderr, "%s\n", buffer);
 
     // Create kernels
-    for (KernelArgument kernelArg : kernelArgs) {
-        kernelArg.kernel.kernel = clCreateKernel(program, kernelArg.kernel.name.c_str(), &ret);
+    for (KernelSpec kernelSpec : kernelSpecs) {
+        kernelSpec.kernel.kernel = clCreateKernel(program, kernelSpec.kernel.name.c_str(), &ret);
 
         if (ret != CL_SUCCESS)
-            fprintf(stderr, "Failed on function clCreateKernel %s: %d\n", kernelArg.name.c_str(), ret);
+            fprintf(stderr, "Failed on function clCreateKernel %s: %d\n", kernelSpec.name.c_str(), ret);
         
-        kernels[kernelArg.name] = kernelArg.kernel;
+        kernels[kernelSpec.name] = kernelSpec.kernel;
     }
 }
 

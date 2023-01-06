@@ -19,10 +19,10 @@ typedef struct OpenClBuffer {
     size_t size;
 } OpenClBuffer;
 
-typedef struct BufferArgument {
+typedef struct BufferSpec {
     std::string name;
     OpenClBuffer buffer;
-} BufferArgument;
+} BufferSpec;
 
 typedef struct OpenClKernel {
     cl_kernel kernel;
@@ -31,15 +31,15 @@ typedef struct OpenClKernel {
     std::string name;
 } OpenClKernel;
 
-typedef struct KernelArgument {
+typedef struct KernelSpec {
     std::string name;
     OpenClKernel kernel;
-} KernelArgument;
+} KernelSpec;
 
 class OpenCl {
 public:
-    OpenCl(char *filename, std::vector<BufferArgument> bufferArgs, std::vector<KernelArgument> kernelArgs, bool useGpu = true);
-    void prepare(std::vector<BufferArgument> bufferArgs, std::vector<KernelArgument> kernelArgs);
+    OpenCl(char *filename, std::vector<BufferSpec> bufferArgs, std::vector<KernelSpec> kernelArgs, bool useGpu = true);
+    void prepare(std::vector<BufferSpec> bufferArgs, std::vector<KernelSpec> kernelArgs);
     void setDevice();
     void getPlatformIds();
     void setKernelArg(std::string kernelName, cl_uint arg_index, size_t size, void *pointer);

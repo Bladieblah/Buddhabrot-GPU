@@ -46,7 +46,7 @@ __constant float d[] = {
     3.754408661907416e+00
 };
 
-__inline double inverseNormalCdf(double uniform) {
+inline double inverseNormalCdf(double uniform) {
 	double q, r;
 
 	if (uniform <= 0) {
@@ -98,14 +98,6 @@ __kernel void seedNoise(
     pcg32Random(randomState, randomIncrement, x);
     randomState[x] += initState[x];
     pcg32Random(randomState, randomIncrement, x);
-}
-
-__kernel void fillNoise(global float *q_list, global ulong *randomState, global ulong *randomIncrement) {
-    const int x = get_global_id(0);
-
-    uint pcg = pcg32Random(randomState, randomIncrement, x);
-
-    q_list[x] = (float)pcg / PCG_MAX_1;
 }
 
 inline float uniformRand(
