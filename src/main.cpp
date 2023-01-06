@@ -17,6 +17,7 @@ using namespace std;
  */
 
 Config *config;
+uint32_t maximaKernelSize;
 
 typedef struct Particle {
     cl_float2 pos;
@@ -44,7 +45,7 @@ void createBufferSpecs() {
         {"path",      {NULL, config->particle_count * config->thresholds[config->threshold_count - 1] * sizeof(FractalCoord)}},
         {"threshold", {NULL, config->threshold_count * sizeof(uint32_t)}},
 
-        {"maxima", {NULL, config->threshold_count * (config->width * config->height / config->maximum_size) * sizeof(uint32_t)}},
+        {"maxima", {NULL, maximaKernelSize * sizeof(uint32_t)}},
         {"maximum", {NULL, config->threshold_count * sizeof(uint32_t)}},
 
         {"randomState",     {NULL, config->particle_count * sizeof(uint64_t)}},
@@ -59,6 +60,8 @@ void createKernelSpecs() {
     kernelSpecs = {
         {"seedNoise", {NULL, 1, {config->particle_count, 0}, "seedNoise"}},
         {"mandelStep", {NULL, 1, {config->particle_count, 0}, "mandelStep"}},
+        {"findMax1", {NULL, 1, {maximaKernelSize, 0}, "findMax1"}},
+        {"findMax2", {NULL, 1, {config->threshold_count, 0}, "findMax2"}},
     };
 }
 
@@ -77,6 +80,14 @@ void setKernelArgs() {
     opencl->setKernelBufferArg("mandelStep", 5, "randomIncrement");
     opencl->setKernelArg("mandelStep", 6, sizeof(int), (void*)&(config->threshold_count));
     opencl->setKernelArg("mandelStep", 7, sizeof(cl_int2), (void*)&resolution);
+    
+    opencl->setKernelBufferArg("findMax1", 0, "count");
+    opencl->setKernelBufferArg("findMax1", 1, "maxima");
+    opencl->setKernelArg("findMax1", 2, sizeof(cl_uint2), (void*)&resolution);
+    
+    opencl->setKernelBufferArg("findMax2", 0, "maxima");
+    opencl->setKernelBufferArg("findMax2", 1, "maximum");
+    opencl->setKernelArg("findMax2", 2, sizeof(cl_uint2), (void*)&resolution);
 }
 
 void initPcg() {
@@ -114,11 +125,14 @@ void prepare() {
 
 int main() {
     config = new Config("config.cfg");
+    int remainder = config->width * config->height % config->maximum_size;
 
-    if (config->width * config->height % config->maximum_size != 0) {
-        fprintf(stderr, "image size % sampling size != 0\n");
+    if (remainder != 0) {
+        fprintf(stderr, "image size (%d) %% sampling size (%d) != 0 (%d)\n", config->width * config->height, config->maximum_size, remainder);
         return 1;
     }
+
+    maximaKernelSize = config->threshold_count * (config->width * config->height / config->maximum_size);
 
     prepare();
 
