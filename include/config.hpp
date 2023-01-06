@@ -18,6 +18,7 @@ public:
 
     unsigned int width = 1080;
     unsigned int height = 720;
+    unsigned int maximum_size = 32;
 
     Config(char *filename);
     void printValues();
@@ -39,6 +40,8 @@ private:
 
         {"width", {'i', (void *)&width}},
         {"height", {'i', (void *)&height}},
+        
+        {"maximum_size", {'i', (void *)&maximum_size}},
     };
 };
 

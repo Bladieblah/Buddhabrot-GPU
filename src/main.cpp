@@ -44,6 +44,9 @@ void createBufferSpecs() {
         {"path",      {NULL, config->particle_count * config->thresholds[config->threshold_count - 1] * sizeof(FractalCoord)}},
         {"threshold", {NULL, config->threshold_count * sizeof(uint32_t)}},
 
+        {"maxima", {NULL, config->threshold_count * (config->width * config->height / config->maximum_size) * sizeof(uint32_t)}},
+        {"maximum", {NULL, config->threshold_count * sizeof(uint32_t)}},
+
         {"randomState",     {NULL, config->particle_count * sizeof(uint64_t)}},
         {"randomIncrement", {NULL, config->particle_count * sizeof(uint64_t)}},
         {"initState",       {NULL, config->particle_count * sizeof(uint64_t)}},
@@ -111,6 +114,11 @@ void prepare() {
 
 int main() {
     config = new Config("config.cfg");
+
+    if (config->width * config->height % config->maximum_size != 0) {
+        fprintf(stderr, "image size % sampling size != 0\n");
+        return 1;
+    }
 
     prepare();
 
