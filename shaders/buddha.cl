@@ -138,11 +138,11 @@ inline float2 fractalToScreen(float2 fractalCoord) {
     return (fractalCoord - VIEW_CENTER) / SCALE;
 }
 
-inline int2 screenToPixel(float2 screenCoord, int2 resolution) {
+inline int2 screenToPixel(float2 screenCoord, uint2 resolution) {
     return (int2)( (float)0.5 * ((float)1. + screenCoord) * resolution);
 }
 
- inline int2 fractalToPixel(float2 fractalCoord, int2 resolution) {
+ inline int2 fractalToPixel(float2 fractalCoord, uint2 resolution) {
     return screenToPixel(fractalToScreen(fractalCoord), resolution);
  }
 
@@ -177,7 +177,7 @@ inline void addPath(
     global unsigned int *threshold,
     int thresholdCount,
     unsigned int pathStart,
-    int2 resolution,
+    uint2 resolution,
     int thresholdIndex
 ) {
     unsigned int pixelCount = resolution.x * resolution.y;
@@ -214,7 +214,7 @@ __kernel void mandelStep(
     global ulong *randomState,
     global ulong *randomIncrement,
     int thresholdCount,
-    int2 resolution
+    uint2 resolution
 ) {
     const int x = get_global_id(0);
     const unsigned int maxLength = threshold[thresholdCount - 1];
