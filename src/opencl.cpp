@@ -127,7 +127,7 @@ void OpenCl::setKernelArg(string kernelName, cl_uint argIndex, size_t size, void
         fprintf(stderr, "Failed setting arg [%d] on kernel [%s]: [%d]\n", argIndex, kernelName.c_str(), ret);
 }
 
-void OpenCl::setKernelBufferArg(string kernelName, string bufferName, int argIndex) {
+void OpenCl::setKernelBufferArg(string kernelName, cl_uint argIndex, string bufferName) {
     ret = clSetKernelArg(kernels[kernelName].kernel, argIndex, sizeof(cl_mem), (void *)&(buffers[bufferName].buffer));
 
     if (ret != CL_SUCCESS)

@@ -209,12 +209,12 @@ inline void resetParticle(
 __kernel void mandelStep(
     global Particle *particles,
     global unsigned int *count,
-    int2 resolution,
     global unsigned int *threshold,
-    int thresholdCount,
     global float2 *path,
     global ulong *randomState,
-    global ulong *randomIncrement
+    global ulong *randomIncrement,
+    int thresholdCount,
+    int2 resolution
 ) {
     const int x = get_global_id(0);
     const unsigned int maxLength = threshold[thresholdCount - 1];

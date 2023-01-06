@@ -44,10 +44,10 @@ void createBufferSpecs() {
         {"path",      {NULL, config->particle_count * config->thresholds[config->threshold_count - 1] * sizeof(FractalCoord)}},
         {"threshold", {NULL, config->threshold_count * sizeof(uint32_t)}},
 
-        {"state",      {NULL, config->particle_count * sizeof(uint64_t)}},
-        {"inc",        {NULL, config->particle_count * sizeof(uint64_t)}},
-        {"init_state", {NULL, config->particle_count * sizeof(uint64_t)}},
-        {"init_seq",   {NULL, config->particle_count * sizeof(uint64_t)}},
+        {"randomState",     {NULL, config->particle_count * sizeof(uint64_t)}},
+        {"randomIncrement", {NULL, config->particle_count * sizeof(uint64_t)}},
+        {"initState",       {NULL, config->particle_count * sizeof(uint64_t)}},
+        {"initSeq",         {NULL, config->particle_count * sizeof(uint64_t)}},
     };
 }
 
@@ -55,14 +55,25 @@ vector<KernelSpec> kernelSpecs;
 void createKernelSpecs() {
     kernelSpecs = {
         {"seedNoise", {NULL, 1, {config->particle_count, 0}, "seedNoise"}},
+        {"mandelStep", {NULL, 1, {config->particle_count, 0}, "mandelStep"}},
     };
 }
 
 void setKernelArgs() {
-    opencl->setKernelBufferArg("seedNoise", "state", 0);
-    opencl->setKernelBufferArg("seedNoise", "inc", 1);
-    opencl->setKernelBufferArg("seedNoise", "init_state", 2);
-    opencl->setKernelBufferArg("seedNoise", "init_seq", 3);
+    opencl->setKernelBufferArg("seedNoise", 0, "randomState");
+    opencl->setKernelBufferArg("seedNoise", 1, "randomIncrement");
+    opencl->setKernelBufferArg("seedNoise", 2, "initState");
+    opencl->setKernelBufferArg("seedNoise", 3, "initSeq");
+
+    cl_uint2 resolution = {config->width, config->height};
+    opencl->setKernelBufferArg("mandelStep", 0, "particles");
+    opencl->setKernelBufferArg("mandelStep", 1, "count");
+    opencl->setKernelBufferArg("mandelStep", 2, "threshold");
+    opencl->setKernelBufferArg("mandelStep", 3, "path");
+    opencl->setKernelBufferArg("mandelStep", 4, "randomState");
+    opencl->setKernelBufferArg("mandelStep", 5, "randomIncrement");
+    opencl->setKernelArg("mandelStep", 6, sizeof(int), (void*)&(config->threshold_count));
+    opencl->setKernelArg("mandelStep", 7, sizeof(cl_int2), (void*)&resolution);
 }
 
 void initPcg() {
@@ -71,8 +82,8 @@ void initPcg() {
         init_seq[i] = pcg32_random();
     }
 
-    opencl->writeBuffer("init_state", (void *)init_state);
-    opencl->writeBuffer("init_seq", (void *)init_seq);
+    opencl->writeBuffer("initState", (void *)init_state);
+    opencl->writeBuffer("initSeq", (void *)init_seq);
     opencl->step("seedNoise");
     opencl->flush();
 }

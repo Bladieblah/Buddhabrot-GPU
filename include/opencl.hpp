@@ -43,10 +43,8 @@ public:
     void setDevice();
     void getPlatformIds();
     void setKernelArg(std::string kernelName, cl_uint arg_index, size_t size, void *pointer);
-    void setKernelBufferArg(std::string kernelName, std::string bufferName, int argIndex);
-    void setKernelBufferArgLocal(std::string kernelName, std::string bufferName, int argIndex);
+    void setKernelBufferArg(std::string kernelName, cl_uint argIndex, std::string bufferName);
     void writeBuffer(std::string name, void *pointer);
-    void swapBuffers(std::string buffer1, std::string buffer2);
     void step(std::string name);
     void readBuffer(std::string name, void *pointer);
     void cleanup();
