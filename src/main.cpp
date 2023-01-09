@@ -18,6 +18,8 @@ using namespace std;
 
 Config *config;
 uint32_t maximaKernelSize;
+chrono::high_resolution_clock::time_point frameTime;
+unsigned int frameCount = 0;
 
 typedef struct Particle {
     cl_float2 pos;
@@ -134,6 +136,12 @@ void prepare() {
 
 void display() {
     displayFW();
+    frameCount++;
+
+    chrono::high_resolution_clock::time_point temp = chrono::high_resolution_clock::now();
+    chrono::duration<float> time_span = chrono::duration_cast<chrono::duration<float>>(temp - frameTime);
+    fprintf(stderr, "\rStep = %d, time = %.4g            ", frameCount / 2, time_span.count());
+    frameTime = temp;
 }
 
 void cleanAll() {
@@ -162,6 +170,8 @@ int main(int argc, char **argv) {
     createFractalWindow("Fractal Window", config->width, config->height);
 
     glutIdleFunc(&display);
+
+    frameTime = chrono::high_resolution_clock::now();
     glutMainLoop();
 
     return 0;
