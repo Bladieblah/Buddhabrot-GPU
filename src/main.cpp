@@ -1,6 +1,9 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include <chrono>
+#include <cstdio>
+#include <cstdlib>
 #include <math.h>
+
+#include <GLUT/glut.h>
 
 #include "config.hpp"
 #include "fractalWindow.hpp"
@@ -129,7 +132,18 @@ void prepare() {
     prepareOpenCl();
 }
 
-int main() {
+void display() {
+    displayFW();
+}
+
+void cleanAll() {
+    fprintf(stderr, "Cleaning everything!\n");
+
+    destroyFractalWindow();
+    opencl->cleanup();
+}
+
+int main(int argc, char **argv) {
     config = new Config("config.cfg");
     int remainder = config->width * config->height % config->maximum_size;
 
@@ -142,9 +156,13 @@ int main() {
 
     prepare();
 
+    atexit(&cleanAll);
+
+    glutInit(&argc, argv);
     createFractalWindow("Fractal Window", config->width, config->height);
 
-    opencl->cleanup();
+    glutIdleFunc(&display);
+    glutMainLoop();
 
     return 0;
 }
