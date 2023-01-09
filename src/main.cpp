@@ -2,11 +2,8 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include <OpenGL/gl.h>
-#include <OpenGL/glu.h>
-#include <GLUT/glut.h>
-
 #include "config.hpp"
+#include "fractalWindow.hpp"
 #include "opencl.hpp"
 #include "pcg.hpp"
 
@@ -34,7 +31,7 @@ typedef struct FractalCoord {
  */
 
 OpenCl *opencl;
-uint64_t *init_state, *init_seq;
+uint64_t *initState, *initSeq;
 
 vector<BufferSpec> bufferSpecs;
 void createBufferSpecs() {
@@ -98,14 +95,17 @@ void setKernelArgs() {
 
 void initPcg() {
     for (int i = 0; i < config->particle_count; i++) {
-        init_state[i] = pcg32_random();
-        init_seq[i] = pcg32_random();
+        initState[i] = pcg32_random();
+        initSeq[i] = pcg32_random();
     }
 
-    opencl->writeBuffer("initState", (void *)init_state);
-    opencl->writeBuffer("initSeq", (void *)init_seq);
+    opencl->writeBuffer("initState", (void *)initState);
+    opencl->writeBuffer("initSeq", (void *)initSeq);
     opencl->step("seedNoise");
     opencl->flush();
+
+    free(initState);
+    free(initSeq);
 }
 
 void prepareOpenCl() {
@@ -123,8 +123,8 @@ void prepareOpenCl() {
 }
 
 void prepare() {
-    init_state = (uint64_t *)malloc(config->particle_count * sizeof(uint64_t));
-    init_seq = (uint64_t *)malloc(config->particle_count * sizeof(uint64_t));
+    initState = (uint64_t *)malloc(config->particle_count * sizeof(uint64_t));
+    initSeq = (uint64_t *)malloc(config->particle_count * sizeof(uint64_t));
 
     prepareOpenCl();
 }
@@ -141,6 +141,10 @@ int main() {
     maximaKernelSize = config->threshold_count * (config->width * config->height / config->maximum_size);
 
     prepare();
+
+    createFractalWindow("Fractal Window", config->width, config->height);
+
+    opencl->cleanup();
 
     return 0;
 }
