@@ -62,6 +62,7 @@ void createKernelSpecs() {
         {"mandelStep", {NULL, 1, {config->particle_count, 0}, "mandelStep"}},
         {"findMax1", {NULL, 1, {maximaKernelSize, 0}, "findMax1"}},
         {"findMax2", {NULL, 1, {config->threshold_count, 0}, "findMax2"}},
+        {"renderImage", {NULL, 2, {config->width, config->height}, "renderImage"}},
     };
 }
 
@@ -88,6 +89,11 @@ void setKernelArgs() {
     opencl->setKernelBufferArg("findMax2", 0, "maxima");
     opencl->setKernelBufferArg("findMax2", 1, "maximum");
     opencl->setKernelArg("findMax2", 2, sizeof(cl_uint2), (void*)&resolution);
+    
+    opencl->setKernelBufferArg("renderImage", 0, "count");
+    opencl->setKernelBufferArg("renderImage", 1, "maximum");
+    opencl->setKernelBufferArg("renderImage", 2, "image");
+    opencl->setKernelArg("renderImage", 3, sizeof(int), (void*)&(config->threshold_count));
 }
 
 void initPcg() {
