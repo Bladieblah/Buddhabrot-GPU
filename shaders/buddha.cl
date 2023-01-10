@@ -132,6 +132,9 @@ __constant float2 VIEW_CENTER = {-0.5, 0.};
 __constant float SCALE = 1.3;
 __constant float VIEW_ANGLE = 0;
 
+__constant float2 STP_OFFSET = {1., 1.};
+__constant float2 STP_SCALE = {.5, .5};
+
 // Transform fractal coordinates to screen coordinates, following openGL conventions
 // The viewport spans [-1,1] in both dimensions
 inline float2 fractalToScreen(float2 fractalCoord) {
@@ -139,7 +142,12 @@ inline float2 fractalToScreen(float2 fractalCoord) {
 }
 
 inline int2 screenToPixel(float2 screenCoord, uint2 resolution) {
-    return (int2)( (float)0.5 * ((float)1. + screenCoord) * resolution );
+    int2 result;
+
+    result.x = (1 + screenCoord.x) / 2 * resolution.x;
+    result.y = (1 + screenCoord.y) / 2 * resolution.y;
+
+    return result;
 }
 
  inline int2 fractalToPixel(float2 fractalCoord, uint2 resolution) {
@@ -181,16 +189,12 @@ inline void addPath(
     int thresholdIndex
 ) {
     unsigned int pixelCount = resolution.x * resolution.y;
-    count[0]++;
-    count[pixelCount]++;
     
     for (unsigned int i = 0; i < particle.iterCount; i++) {
         int2 pixel = fractalToPixel(path[pathStart + i], resolution);
 
         if (! (pixel.x < 0 || pixel.x >= resolution.x || pixel.x < 0 || pixel.y >= resolution.y)) {
-            count[thresholdIndex * pixelCount + resolution.x * pixel.y + pixel.x]++;
-        } else {
-            count[1]++;
+            atomic_inc(&count[thresholdIndex * pixelCount + resolution.x * pixel.y + pixel.x]);
         }
     }
 }
@@ -245,14 +249,13 @@ __kernel void mandelStep(
     path[pathIndex + particles[x].iterCount] = particles[x].pos;
     particles[x].iterCount++;
 
-    int thresholdIndex = matchThreshold(particles[x], threshold, thresholdCount);
     if (cnorm(particles[x].pos) > 16) {
+        int thresholdIndex = matchThreshold(particles[x], threshold, thresholdCount);
         addPath(particles[x], path, count, threshold, thresholdCount, pathIndex, resolution, thresholdIndex);
         resetParticle(particles, path, pathIndex, randomState, randomIncrement, x);
     }
 
     if (particles[x].iterCount >= maxLength) {
-        addPath(particles[x], path, count, threshold, thresholdCount, pathIndex, resolution, thresholdIndex);
         resetParticle(particles, path, pathIndex, randomState, randomIncrement, x);
     }
 }
@@ -318,6 +321,10 @@ __constant float IMAGE_MAX = 4294967295.0;
         for (int i = 0; i < thresholdCount; i++) {
             float countFraction = (float)count[i * pixelCount + pixelOffset] / (float)maximum[i];
             image[imageOffset + j] += (int)(COLOR_SCHEME[i][j] * sqrt(countFraction) * IMAGE_MAX);
+        }
+
+        if (image[imageOffset + j] >= 4294967295) {
+           image[imageOffset + j] = 4294967295;
         }
     }
 }

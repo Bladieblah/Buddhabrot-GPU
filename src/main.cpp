@@ -140,6 +140,8 @@ void prepareOpenCl() {
 }
 
 void prepare() {
+    pcg32_srandom(time(NULL) ^ (intptr_t)&printf, (intptr_t)&(config->particle_count));
+
     initState = (uint64_t *)malloc(config->particle_count * sizeof(uint64_t));
     initSeq = (uint64_t *)malloc(config->particle_count * sizeof(uint64_t));
 
@@ -147,7 +149,13 @@ void prepare() {
 }
 
 void display() {
-    for (int i = 0; i < 10; i++) {
+    frameCount++;
+
+    if (frameCount % 2 == 0) {
+        return;
+    }
+
+    for (int i = 0; i < 100; i++) {
         opencl->step("mandelStep");
     }
     opencl->step("findMax1");
@@ -157,7 +165,6 @@ void display() {
     opencl->readBuffer("image", pixelsFW);
 
     displayFW();
-    frameCount++;
 
     chrono::high_resolution_clock::time_point temp = chrono::high_resolution_clock::now();
     chrono::duration<float> time_span = chrono::duration_cast<chrono::duration<float>>(temp - frameTime);
@@ -166,17 +173,14 @@ void display() {
 }
 
 void cleanAll() {
-    opencl->readBuffer("count", pixelsFW);
+    opencl->readBuffer("image", pixelsFW);
     fprintf(stderr, "\nPixelSamples:\n");
 
-    int i0 = 0;//(config->width * (config->height / 4) + config->width / 4);
-    fprintf(stderr, "%d ", pixelsFW[config->width * config->height]);
-    for (int i = i0; i < i0 + 100; i++) {
-        fprintf(stderr, "%d ", pixelsFW[i]);
-        // for (int j = 0; j < 3; j++) {
-        //     fprintf(stderr, "%d ", pixelsFW[i + j * config->width * config->height]);
-        // }
-
+    int i0 = (config->width * (config->height / 4) + config->width / 4);
+    for (int i = i0; i < i0 + 50; i++) {
+        for (int j = 0; j < 3; j++) {
+            fprintf(stderr, "%.5f ", (double)pixelsFW[3 * i + j] / 4294967295.0);
+        }
         fprintf(stderr, "\n");
     }
 
@@ -202,6 +206,7 @@ int main(int argc, char **argv) {
     }
 
     maximaKernelSize = (config->width * config->height / config->maximum_size);
+    frameTime = chrono::high_resolution_clock::now();
 
     prepare();
 
@@ -209,11 +214,15 @@ int main(int argc, char **argv) {
 
     glutInit(&argc, argv);
     createFractalWindow("Fractal Window", config->width, config->height);
+    glutDisplayFunc(&display);
 
     glutIdleFunc(&display);
 
-    frameTime = chrono::high_resolution_clock::now();
     glutMainLoop();
+
+    // pixelsFW = (uint32_t *)malloc(3 * config->width * config->height * sizeof(uint32_t));
+    // display();
+    // cleanAll();
 
     return 0;
 }

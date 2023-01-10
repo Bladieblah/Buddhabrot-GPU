@@ -60,6 +60,10 @@ void displayFW() {
 
 void keyPressedFW(unsigned char key, int x, int y) {
     switch (key) {
+        case 'e':
+            glutSetWindow(windowIdFW);
+            glutPostRedisplay();
+            break;
         case 'q':
             exit(0);
             break;
@@ -101,7 +105,6 @@ void createFractalWindow(char *name, uint32_t width, uint32_t height) {
         pixelsFW[i] = 4294967296/2;
     }
     
-    glutDisplayFunc(&displayFW);
     glutKeyboardFunc(&keyPressedFW);
     glutSpecialFunc(&specialKeyPressedFW);
     glutMouseFunc(&mousePressedFW);
