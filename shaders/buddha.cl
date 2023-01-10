@@ -196,6 +196,13 @@ inline void addPath(
         if (! (pixel.x < 0 || pixel.x >= resolution.x || pixel.y < 0 || pixel.y >= resolution.y)) {
             atomic_inc(&count[thresholdIndex * pixelCount + resolution.x * pixel.y + pixel.x]);
         }
+
+        path[pathStart + i].y = -path[pathStart + i].y;
+        pixel = fractalToPixel(path[pathStart + i], resolution);
+
+        if (! (pixel.x < 0 || pixel.x >= resolution.x || pixel.y < 0 || pixel.y >= resolution.y)) {
+            atomic_inc(&count[thresholdIndex * pixelCount + resolution.x * pixel.y + pixel.x]);
+        }
     }
 }
 

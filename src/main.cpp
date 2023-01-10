@@ -173,6 +173,7 @@ void display() {
 }
 
 void cleanAll() {
+    fprintf(stderr, "\nExiting\n");
     destroyFractalWindow();
     opencl->cleanup();
 }
