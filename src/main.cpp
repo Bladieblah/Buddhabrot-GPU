@@ -17,7 +17,8 @@ using namespace std;
  */
 
 Config *config;
-uint32_t maximaKernelSize;
+unsigned int maximaKernelSize;
+
 chrono::high_resolution_clock::time_point frameTime;
 unsigned int frameCount = 0;
 
@@ -47,7 +48,7 @@ void createBufferSpecs() {
         {"path",      {NULL, config->particle_count * config->thresholds[config->threshold_count - 1] * sizeof(FractalCoord)}},
         {"threshold", {NULL, config->threshold_count * sizeof(uint32_t)}},
 
-        {"maxima", {NULL, maximaKernelSize * sizeof(uint32_t)}},
+        {"maxima", {NULL, config->threshold_count * maximaKernelSize * sizeof(uint32_t)}},
         {"maximum", {NULL, config->threshold_count * sizeof(uint32_t)}},
 
         {"randomState",     {NULL, config->particle_count * sizeof(uint64_t)}},
@@ -62,7 +63,8 @@ void createKernelSpecs() {
     kernelSpecs = {
         {"seedNoise", {NULL, 1, {config->particle_count, 0}, "seedNoise"}},
         {"mandelStep", {NULL, 1, {config->particle_count, 0}, "mandelStep"}},
-        {"findMax1", {NULL, 1, {maximaKernelSize, 0}, "findMax1"}},
+        {"initParticles", {NULL, 1, {config->particle_count, 0}, "initParticles"}},
+        {"findMax1", {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, "findMax1"}},
         {"findMax2", {NULL, 1, {config->threshold_count, 0}, "findMax2"}},
         {"renderImage", {NULL, 2, {config->width, config->height}, "renderImage"}},
     };
@@ -84,13 +86,20 @@ void setKernelArgs() {
     opencl->setKernelArg("mandelStep", 6, sizeof(int), (void*)&(config->threshold_count));
     opencl->setKernelArg("mandelStep", 7, sizeof(cl_int2), (void*)&resolution);
     
+    opencl->setKernelBufferArg("initParticles", 0, "particles");
+    opencl->setKernelBufferArg("initParticles", 1, "threshold");
+    opencl->setKernelBufferArg("initParticles", 2, "path");
+    opencl->setKernelBufferArg("initParticles", 3, "randomState");
+    opencl->setKernelBufferArg("initParticles", 4, "randomIncrement");
+    opencl->setKernelArg("initParticles", 5, sizeof(int), (void*)&(config->threshold_count));
+    
     opencl->setKernelBufferArg("findMax1", 0, "count");
     opencl->setKernelBufferArg("findMax1", 1, "maxima");
-    opencl->setKernelArg("findMax1", 2, sizeof(cl_uint2), (void*)&resolution);
+    opencl->setKernelArg("findMax1", 2, sizeof(unsigned int), (void*)&(config->maximum_size));
     
     opencl->setKernelBufferArg("findMax2", 0, "maxima");
     opencl->setKernelBufferArg("findMax2", 1, "maximum");
-    opencl->setKernelArg("findMax2", 2, sizeof(cl_uint2), (void*)&resolution);
+    opencl->setKernelArg("findMax2", 2, sizeof(unsigned int), (void*)&maximaKernelSize);
     
     opencl->setKernelBufferArg("renderImage", 0, "count");
     opencl->setKernelBufferArg("renderImage", 1, "maximum");
@@ -124,7 +133,10 @@ void prepareOpenCl() {
     );
 
     setKernelArgs();
+    
     initPcg();
+    opencl->writeBuffer("threshold", &(config->thresholds));
+    opencl->step("initParticles");
 }
 
 void prepare() {
@@ -135,6 +147,15 @@ void prepare() {
 }
 
 void display() {
+    for (int i = 0; i < 10; i++) {
+        opencl->step("mandelStep");
+    }
+    opencl->step("findMax1");
+    opencl->step("findMax2");
+    opencl->step("renderImage");
+    opencl->flush();
+    opencl->readBuffer("image", pixelsFW);
+
     displayFW();
     frameCount++;
 
@@ -145,7 +166,27 @@ void display() {
 }
 
 void cleanAll() {
-    fprintf(stderr, "Cleaning everything!\n");
+    opencl->readBuffer("count", pixelsFW);
+    fprintf(stderr, "\nPixelSamples:\n");
+
+    int i0 = 0;//(config->width * (config->height / 4) + config->width / 4);
+    fprintf(stderr, "%d ", pixelsFW[config->width * config->height]);
+    for (int i = i0; i < i0 + 100; i++) {
+        fprintf(stderr, "%d ", pixelsFW[i]);
+        // for (int j = 0; j < 3; j++) {
+        //     fprintf(stderr, "%d ", pixelsFW[i + j * config->width * config->height]);
+        // }
+
+        fprintf(stderr, "\n");
+    }
+
+    Particle *particles = (Particle *)malloc(config->particle_count * sizeof(Particle));
+    opencl->readBuffer("particles", particles);
+    fprintf(stderr, "\nParticles:\n");
+    for (int i = 0; i < 10; i++) {
+        Particle p = particles[i];
+        fprintf(stderr, "%d: (%.2f, %.2f) (%.2f, %.2f) %d\n", i, p.pos.s[0], p.pos.s[1], p.offset.s[0], p.offset.s[1], p.iter_count);
+    }
 
     destroyFractalWindow();
     opencl->cleanup();
@@ -160,7 +201,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    maximaKernelSize = config->threshold_count * (config->width * config->height / config->maximum_size);
+    maximaKernelSize = (config->width * config->height / config->maximum_size);
 
     prepare();
 

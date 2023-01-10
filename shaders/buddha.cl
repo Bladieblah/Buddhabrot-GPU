@@ -139,7 +139,7 @@ inline float2 fractalToScreen(float2 fractalCoord) {
 }
 
 inline int2 screenToPixel(float2 screenCoord, uint2 resolution) {
-    return (int2)( (float)0.5 * ((float)1. + screenCoord) * resolution);
+    return (int2)( (float)0.5 * ((float)1. + screenCoord) * resolution );
 }
 
  inline int2 fractalToPixel(float2 fractalCoord, uint2 resolution) {
@@ -181,14 +181,22 @@ inline void addPath(
     int thresholdIndex
 ) {
     unsigned int pixelCount = resolution.x * resolution.y;
+    count[0]++;
+    count[pixelCount]++;
+    
     for (unsigned int i = 0; i < particle.iterCount; i++) {
         int2 pixel = fractalToPixel(path[pathStart + i], resolution);
-        count[thresholdIndex * pixelCount + resolution.x * pixel.y + pixel.x]++;
+
+        if (! (pixel.x < 0 || pixel.x >= resolution.x || pixel.x < 0 || pixel.y >= resolution.y)) {
+            count[thresholdIndex * pixelCount + resolution.x * pixel.y + pixel.x]++;
+        } else {
+            count[1]++;
+        }
     }
 }
 
 inline void resetParticle(
-    Particle particle,
+    global Particle *particles,
     global float2 *path,
     unsigned int pathStart,
     global ulong *randomState,
@@ -200,10 +208,23 @@ inline void resetParticle(
         (6. * uniformRand(randomState, randomIncrement, x) - 3.)
     );
 
-    particle.iterCount = 1;
-    particle.pos = newOffset;
-    particle.offset = newOffset;
+    particles[x].iterCount = 1;
+    particles[x].pos = newOffset;
+    particles[x].offset = newOffset;
     path[pathStart] = newOffset;
+}
+
+__kernel void initParticles(
+    global Particle *particles,
+    global unsigned int *threshold,
+    global float2 *path,
+    global ulong *randomState,
+    global ulong *randomIncrement,
+    int thresholdCount
+) {
+    const int x = get_global_id(0);
+
+    resetParticle(particles, path, x * threshold[thresholdCount - 1], randomState, randomIncrement, x);
 }
 
 __kernel void mandelStep(
@@ -220,20 +241,19 @@ __kernel void mandelStep(
     const unsigned int maxLength = threshold[thresholdCount - 1];
     const unsigned int pathIndex = x * maxLength;
 
-    Particle particle = particles[x];
+    particles[x].pos = csquare(particles[x].pos) + particles[x].offset;
+    path[pathIndex + particles[x].iterCount] = particles[x].pos;
+    particles[x].iterCount++;
 
-    particle.pos = csquare(particle.pos) + particle.offset;
-    path[pathIndex + particle.iterCount] = particle.pos;
-    particle.iterCount++;
-
-    if (cnorm(particle.pos) > 4) {
-        int thresholdIndex = matchThreshold(particle, threshold, thresholdCount);
-        addPath(particle, path, count, threshold, thresholdCount, pathIndex, resolution, thresholdIndex);
-        resetParticle(particle, path, pathIndex, randomState, randomIncrement, x);
+    int thresholdIndex = matchThreshold(particles[x], threshold, thresholdCount);
+    if (cnorm(particles[x].pos) > 16) {
+        addPath(particles[x], path, count, threshold, thresholdCount, pathIndex, resolution, thresholdIndex);
+        resetParticle(particles, path, pathIndex, randomState, randomIncrement, x);
     }
 
-    if (particle.iterCount == maxLength) {
-        resetParticle(particle, path, pathIndex, randomState, randomIncrement, x);
+    if (particles[x].iterCount >= maxLength) {
+        addPath(particles[x], path, count, threshold, thresholdCount, pathIndex, resolution, thresholdIndex);
+        resetParticle(particles, path, pathIndex, randomState, randomIncrement, x);
     }
 }
 
@@ -241,22 +261,22 @@ __kernel void mandelStep(
  * Global operations, to be optimised later
  */
 
-__kernel void findMax1(global unsigned int *count, global unsigned int *maxima, int2 resolution) {
+__kernel void findMax1(global unsigned int *count, global unsigned int *maxima, unsigned int size) {
     const int x = get_global_id(0);
     maxima[x] = 0;
 
-    for (int i = x * resolution.x; i < (x + 1) * resolution.x; i++) {
+    for (int i = x * size; i < (x + 1) * size; i++) {
         if (count[i] > maxima[x]) {
             maxima[x] = count[i];
         }
     }
 }
 
-__kernel void findMax2(global unsigned int *maxima, global unsigned int *maximum, int2 resolution) {
+__kernel void findMax2(global unsigned int *maxima, global unsigned int *maximum, unsigned int size) {
     const int x = get_global_id(0);
     maximum[x] = 0;
 
-    for (int i = x * resolution.y; i < (x + 1) * resolution.y; i++) {
+    for (int i = x * size; i < (x + 1) * size; i++) {
         if (maxima[i] > maximum[x]) {
             maximum[x] = maxima[i];
         }
