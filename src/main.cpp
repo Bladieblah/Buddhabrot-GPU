@@ -155,7 +155,7 @@ void display() {
         return;
     }
 
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < config->frame_steps; i++) {
         opencl->step("mandelStep");
     }
     opencl->step("findMax1");
@@ -173,24 +173,25 @@ void display() {
 }
 
 void cleanAll() {
-    opencl->readBuffer("image", pixelsFW);
-    fprintf(stderr, "\nPixelSamples:\n");
+    // opencl->readBuffer("count", pixelsFW);
+    // fprintf(stderr, "\nPixelSamples:\n");
 
-    int i0 = (config->width * (config->height / 4) + config->width / 4);
-    for (int i = i0; i < i0 + 50; i++) {
-        for (int j = 0; j < 3; j++) {
-            fprintf(stderr, "%.5f ", (double)pixelsFW[3 * i + j] / 4294967295.0);
-        }
-        fprintf(stderr, "\n");
-    }
+    // int i0 = (config->width * (config->height / 4) + (config->width * 0.9));
+    // for (int i = i0; i < i0 + 50; i++) {
+    //     for (int j = 0; j < 3; j++) {
+    //         // fprintf(stderr, "%.5f ", (double)pixelsFW[3 * i + j] / 4294967295.0);
+    //         fprintf(stderr, "%d ", pixelsFW[i + j * config->width * config->height]);
+    //     }
+    //     fprintf(stderr, "\n");
+    // }
 
-    Particle *particles = (Particle *)malloc(config->particle_count * sizeof(Particle));
-    opencl->readBuffer("particles", particles);
-    fprintf(stderr, "\nParticles:\n");
-    for (int i = 0; i < 10; i++) {
-        Particle p = particles[i];
-        fprintf(stderr, "%d: (%.2f, %.2f) (%.2f, %.2f) %d\n", i, p.pos.s[0], p.pos.s[1], p.offset.s[0], p.offset.s[1], p.iter_count);
-    }
+    // Particle *particles = (Particle *)malloc(config->particle_count * sizeof(Particle));
+    // opencl->readBuffer("particles", particles);
+    // fprintf(stderr, "\nParticles:\n");
+    // for (int i = 0; i < 10; i++) {
+    //     Particle p = particles[i];
+    //     fprintf(stderr, "%d: (%.2f, %.2f) (%.2f, %.2f) %d\n", i, p.pos.s[0], p.pos.s[1], p.offset.s[0], p.offset.s[1], p.iter_count);
+    // }
 
     destroyFractalWindow();
     opencl->cleanup();
@@ -198,6 +199,7 @@ void cleanAll() {
 
 int main(int argc, char **argv) {
     config = new Config("config.cfg");
+
     int remainder = config->width * config->height % config->maximum_size;
 
     if (remainder != 0) {

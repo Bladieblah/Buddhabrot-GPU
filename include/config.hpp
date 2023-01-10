@@ -19,6 +19,7 @@ public:
     unsigned int width = 1080;
     unsigned int height = 720;
     unsigned int maximum_size = 32;
+    unsigned int frame_steps = 100;
 
     Config(char *filename);
     void printValues();
@@ -42,6 +43,7 @@ private:
         {"height", {'i', (void *)&height}},
         
         {"maximum_size", {'i', (void *)&maximum_size}},
+        {"frame_steps", {'i', (void *)&frame_steps}},
     };
 };
 

@@ -129,7 +129,7 @@ inline float uniformRand(
  */
 
 __constant float2 VIEW_CENTER = {-0.5, 0.};
-__constant float SCALE = 1.3;
+__constant float SCALEY = 1.3;
 __constant float VIEW_ANGLE = 0;
 
 __constant float2 STP_OFFSET = {1., 1.};
@@ -137,8 +137,8 @@ __constant float2 STP_SCALE = {.5, .5};
 
 // Transform fractal coordinates to screen coordinates, following openGL conventions
 // The viewport spans [-1,1] in both dimensions
-inline float2 fractalToScreen(float2 fractalCoord) {
-    return (fractalCoord - VIEW_CENTER) / SCALE;
+inline float2 fractalToScreen(float2 fractalCoord, float2 resolution) {
+    return (fractalCoord - VIEW_CENTER) / (float2){SCALEY / resolution.y * resolution.x, SCALEY};
 }
 
 inline int2 screenToPixel(float2 screenCoord, uint2 resolution) {
@@ -151,7 +151,7 @@ inline int2 screenToPixel(float2 screenCoord, uint2 resolution) {
 }
 
  inline int2 fractalToPixel(float2 fractalCoord, uint2 resolution) {
-    return screenToPixel(fractalToScreen(fractalCoord), resolution);
+    return screenToPixel(fractalToScreen(fractalCoord, (float2){(float)resolution.x, (float)resolution.y}), resolution);
  }
 
 /**
@@ -193,7 +193,7 @@ inline void addPath(
     for (unsigned int i = 0; i < particle.iterCount; i++) {
         int2 pixel = fractalToPixel(path[pathStart + i], resolution);
 
-        if (! (pixel.x < 0 || pixel.x >= resolution.x || pixel.x < 0 || pixel.y >= resolution.y)) {
+        if (! (pixel.x < 0 || pixel.x >= resolution.x || pixel.y < 0 || pixel.y >= resolution.y)) {
             atomic_inc(&count[thresholdIndex * pixelCount + resolution.x * pixel.y + pixel.x]);
         }
     }
@@ -311,9 +311,9 @@ __constant float IMAGE_MAX = 4294967295.0;
     const int W = get_global_size(0);
     const int H = get_global_size(1);
 
-    const unsigned int pixelOffset = W * x + y;
+    const unsigned int pixelOffset = W * y + x;
     unsigned int pixelCount = W * H;
-    const unsigned int imageOffset = thresholdCount * pixelOffset;
+    const unsigned int imageOffset = 3 * pixelOffset;
 
     for (int j = 0; j < 3; j++) {
         image[imageOffset + j] = 0;
