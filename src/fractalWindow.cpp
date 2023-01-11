@@ -11,18 +11,7 @@
 int windowIdFW;
 uint32_t *pixelsFW;
 
-typedef struct ViewSettings {
-    uint32_t width, height;
-    float scale = 1, centerX = 0, centerY = 0;
-} ViewSettings;
-
-typedef struct MouseState {
-    int xDown, yDown;
-    int x, y;
-    int state;
-} MouseState;
-
-ViewSettings settingsFW;
+WindowSettings settingsFW;
 MouseState mouseFW;
 
 void displayFW() {
