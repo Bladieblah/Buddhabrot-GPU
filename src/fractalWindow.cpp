@@ -13,10 +13,17 @@ uint32_t *pixelsFW;
 
 typedef struct ViewSettings {
     uint32_t width, height;
-    double scale = 1, centerX = 0, centerY = 0;
+    float scale = 1, centerX = 0, centerY = 0;
 } ViewSettings;
 
-ViewSettings settings;
+typedef struct MouseState {
+    int xDown, yDown;
+    int x, y;
+    int state;
+} MouseState;
+
+ViewSettings settingsFW;
+MouseState mouseFW;
 
 void displayFW() {
     glutSetWindow(windowIdFW);
@@ -32,8 +39,8 @@ void displayFW() {
         GL_TEXTURE_2D,
         0,
         GL_RGB,
-        settings.width,
-        settings.height,
+        settingsFW.width,
+        settingsFW.height,
         0,
         GL_RGB,
         GL_UNSIGNED_INT,
@@ -41,8 +48,8 @@ void displayFW() {
     );
 
     glPushMatrix();
-    glScalef(settings.scale, settings.scale, 1.);
-    glTranslatef(-settings.centerX, -settings.centerY, 0.);
+    glScalef(settingsFW.scale, settingsFW.scale, 1.);
+    glTranslatef(-settingsFW.centerX, -settingsFW.centerY, 0.);
 
     glBegin(GL_QUADS);
         glTexCoord2f(0.0f, 0.0f); glVertex2f(-1.0, -1.0);
@@ -81,11 +88,21 @@ void specialKeyPressedFW(int key, int x, int y) {
 }
 
 void mousePressedFW(int button, int state, int x, int y) {
+    if (button != GLUT_LEFT_BUTTON) {
+        return;
+    }
 
+    mouseFW.state = state;
+
+    if (state == GLUT_DOWN) {
+        mouseFW.xDown = x;
+        mouseFW.yDown = y;
+    }
 }
 
 void mouseMovedFW(int x, int y) {
-
+    mouseFW.x = x;
+    mouseFW.y = y;
 }
 
 void onReshapeFW(int w, int h) {
@@ -96,8 +113,8 @@ void onReshapeFW(int w, int h) {
 }
 
 void createFractalWindow(char *name, uint32_t width, uint32_t height) {
-    settings.width = width;
-    settings.height = height;
+    settingsFW.width = width;
+    settingsFW.height = height;
 
     glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
     glutInitWindowSize(width, height);
@@ -106,7 +123,7 @@ void createFractalWindow(char *name, uint32_t width, uint32_t height) {
     pixelsFW = (uint32_t *)malloc(3 * width * height * sizeof(uint32_t));
 
     for (int i = 0; i < 3 * width * height; i++) {
-        pixelsFW[i] = 4294967296/2;
+        pixelsFW[i] = 0;
     }
     
     glutKeyboardFunc(&keyPressedFW);
