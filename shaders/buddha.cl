@@ -164,6 +164,14 @@ typedef struct Particle {
     unsigned int iterCount;
 } Particle;
 
+__kernel void resetCount(global unsigned int *count, int size) {
+    const int x = get_global_id(0);
+
+    for (int i = 0; i < size; i++) {
+        count[size * x + i] = 0;
+    }
+}
+
 inline int matchThreshold(
     Particle particle,
     global unsigned int *threshold,

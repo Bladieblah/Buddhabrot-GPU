@@ -61,12 +61,13 @@ void createBufferSpecs() {
 vector<KernelSpec> kernelSpecs;
 void createKernelSpecs() {
     kernelSpecs = {
-        {"seedNoise", {NULL, 1, {config->particle_count, 0}, "seedNoise"}},
-        {"mandelStep", {NULL, 1, {config->particle_count, 0}, "mandelStep"}},
+        {"seedNoise",     {NULL, 1, {config->particle_count, 0}, "seedNoise"}},
         {"initParticles", {NULL, 1, {config->particle_count, 0}, "initParticles"}},
-        {"findMax1", {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, "findMax1"}},
-        {"findMax2", {NULL, 1, {config->threshold_count, 0}, "findMax2"}},
-        {"renderImage", {NULL, 2, {config->width, config->height}, "renderImage"}},
+        {"mandelStep",    {NULL, 1, {config->particle_count, 0}, "mandelStep"}},
+        {"resetCount",    {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, "resetCount"}},
+        {"findMax1",      {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, "findMax1"}},
+        {"findMax2",      {NULL, 1, {config->threshold_count, 0}, "findMax2"}},
+        {"renderImage",   {NULL, 2, {config->width, config->height}, "renderImage"}},
     };
 }
 
@@ -93,6 +94,9 @@ void setKernelArgs() {
     opencl->setKernelBufferArg("initParticles", 4, "randomIncrement");
     opencl->setKernelArg("initParticles", 5, sizeof(int), (void*)&(config->threshold_count));
     
+    opencl->setKernelBufferArg("resetCount", 0, "count");
+    opencl->setKernelArg("resetCount", 1, sizeof(unsigned int), (void*)&(config->maximum_size));
+
     opencl->setKernelBufferArg("findMax1", 0, "count");
     opencl->setKernelBufferArg("findMax1", 1, "maxima");
     opencl->setKernelArg("findMax1", 2, sizeof(unsigned int), (void*)&(config->maximum_size));
@@ -158,10 +162,10 @@ void display() {
     for (int i = 0; i < config->frame_steps; i++) {
         opencl->step("mandelStep");
     }
+
     opencl->step("findMax1");
     opencl->step("findMax2");
     opencl->step("renderImage");
-    opencl->flush();
     opencl->readBuffer("image", pixelsFW);
 
     displayFW();

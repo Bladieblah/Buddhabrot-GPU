@@ -6,6 +6,7 @@
 #include <GLUT/glut.h>
 
 #include "fractalWindow.hpp"
+#include "opencl.hpp"
 
 int windowIdFW;
 uint32_t *pixelsFW;
@@ -66,6 +67,9 @@ void keyPressedFW(unsigned char key, int x, int y) {
             break;
         case 'q':
             exit(0);
+            break;
+        case 'r':
+            opencl->step("resetCount");
             break;
         default:
             break;
