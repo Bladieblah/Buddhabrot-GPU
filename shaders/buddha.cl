@@ -151,15 +151,15 @@ inline float2 fractalToScreen(float2 fractalCoord, ViewSettings view) {
     }, view);
 }
 
-inline int2 screenToPixel(float2 screenCoord, uint2 resolution) {
-    return (int2) {
-        (1 + screenCoord.x) / 2 * resolution.x,
-        (1 + screenCoord.y) / 2 * resolution.y
+inline uint2 screenToPixel(float2 screenCoord, ViewSettings view) {
+    return (uint2) {
+        (1 + screenCoord.x) / 2 * view.sizeX,
+        (1 + screenCoord.y) / 2 * view.sizeY
     };
 }
 
- inline int2 fractalToPixel(float2 fractalCoord, uint2 resolution, ViewSettings view) {
-    return screenToPixel(fractalToScreen(fractalCoord, view), resolution);
+ inline uint2 fractalToPixel(float2 fractalCoord, ViewSettings view) {
+    return screenToPixel(fractalToScreen(fractalCoord, view), view);
  }
 
 /**
@@ -201,24 +201,23 @@ inline void addPath(
     global unsigned int *threshold,
     int thresholdCount,
     unsigned int pathStart,
-    uint2 resolution,
     int thresholdIndex,
     ViewSettings view
 ) {
-    unsigned int pixelCount = resolution.x * resolution.y;
+    unsigned int pixelCount = view.sizeX * view.sizeY;
     
     for (unsigned int i = 0; i < particle.iterCount; i++) {
-        int2 pixel = fractalToPixel(path[pathStart + i], resolution, view);
+        uint2 pixel = fractalToPixel(path[pathStart + i], view);
 
-        if (! (pixel.x < 0 || pixel.x >= resolution.x || pixel.y < 0 || pixel.y >= resolution.y)) {
-            atomic_inc(&count[thresholdIndex * pixelCount + resolution.x * pixel.y + pixel.x]);
+        if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) {
+            atomic_inc(&count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]);
         }
 
         path[pathStart + i].y = -path[pathStart + i].y;
-        pixel = fractalToPixel(path[pathStart + i], resolution, view);
+        pixel = fractalToPixel(path[pathStart + i], view);
 
-        if (! (pixel.x < 0 || pixel.x >= resolution.x || pixel.y < 0 || pixel.y >= resolution.y)) {
-            atomic_inc(&count[thresholdIndex * pixelCount + resolution.x * pixel.y + pixel.x]);
+        if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) {
+            atomic_inc(&count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]);
         }
     }
 }
@@ -263,7 +262,6 @@ __kernel void mandelStep(
     global ulong *randomState,
     global ulong *randomIncrement,
     int thresholdCount,
-    uint2 resolution,
     ViewSettings view
 ) {
     const int x = get_global_id(0);
@@ -276,7 +274,7 @@ __kernel void mandelStep(
 
     if (cnorm(particles[x].pos) > 16) {
         int thresholdIndex = matchThreshold(particles[x], threshold, thresholdCount);
-        addPath(particles[x], path, count, threshold, thresholdCount, pathIndex, resolution, thresholdIndex, view);
+        addPath(particles[x], path, count, threshold, thresholdCount, pathIndex, thresholdIndex, view);
         resetParticle(particles, path, pathIndex, randomState, randomIncrement, x);
     }
 

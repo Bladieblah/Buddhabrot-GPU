@@ -17,8 +17,8 @@ PixelCoordinate FractalCoordinate::toPixel(ViewSettings view) {
     tmp.rotate(view.sinTheta, view.cosTheta);
 
     return (PixelCoordinate) {
-        (1 + x) / 2 * view.sizeX,
-        (1 + y) / 2 * view.sizeY
+        (int)((1 + x) / 2 * view.sizeX),
+        (int)((1 + y) / 2 * view.sizeY)
     };
 }
 

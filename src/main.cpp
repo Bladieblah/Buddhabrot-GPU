@@ -77,7 +77,6 @@ void setKernelArgs() {
     opencl->setKernelBufferArg("seedNoise", 2, "initState");
     opencl->setKernelBufferArg("seedNoise", 3, "initSeq");
 
-    cl_uint2 resolution = {config->width, config->height};
     opencl->setKernelBufferArg("mandelStep", 0, "particles");
     opencl->setKernelBufferArg("mandelStep", 1, "count");
     opencl->setKernelBufferArg("mandelStep", 2, "threshold");
@@ -85,8 +84,7 @@ void setKernelArgs() {
     opencl->setKernelBufferArg("mandelStep", 4, "randomState");
     opencl->setKernelBufferArg("mandelStep", 5, "randomIncrement");
     opencl->setKernelArg("mandelStep", 6, sizeof(int), (void*)&(config->threshold_count));
-    opencl->setKernelArg("mandelStep", 7, sizeof(cl_int2), (void*)&resolution);
-    opencl->setKernelArg("mandelStep", 8, sizeof(ViewSettings), (void*)&viewFW);
+    opencl->setKernelArg("mandelStep", 7, sizeof(ViewSettings), (void*)&viewFW);
     
     opencl->setKernelBufferArg("initParticles", 0, "particles");
     opencl->setKernelBufferArg("initParticles", 1, "threshold");

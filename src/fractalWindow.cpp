@@ -84,7 +84,7 @@ void updateView(float scale, float centerX, float centerY, float theta) {
     viewFW.cosTheta = cos(theta);
     viewFW.sinTheta = sin(theta);
 
-    opencl->setKernelArg("mandelStep", 8, sizeof(ViewSettings), (void*)&viewFW);
+    opencl->setKernelArg("mandelStep", 7, sizeof(ViewSettings), (void*)&viewFW);
 }
 
 void selectRegion() {
