@@ -34,7 +34,7 @@ struct PixelCoordinate {
 */
 struct ScreenCoordinate {
     int x, y;
-    PixelCoordinate toScreen(WindowSettings settings);
+    PixelCoordinate toPixel(WindowSettings settings);
 };
 
 #endif
