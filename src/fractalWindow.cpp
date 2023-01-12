@@ -6,6 +6,7 @@
 #include <OpenGL/glu.h>
 #include <GLUT/glut.h>
 
+#include "coordinates.hpp"
 #include "fractalWindow.hpp"
 #include "opencl.hpp"
 
@@ -88,6 +89,14 @@ void keyPressedFW(unsigned char key, int x, int y) {
             glutSetWindow(windowIdFW);
             glutPostRedisplay();
             break;
+
+        case 'w':
+            settingsFW.zoom *= 1.5;
+            break;
+        case 's':
+            settingsFW.zoom /= 1.5;
+            break;
+
         case 'q':
             exit(0);
             break;
@@ -103,7 +112,16 @@ void specialKeyPressedFW(int key, int x, int y) {
 
 }
 
+void translateCamera(ScreenCoordinates coords) {
+    settingsFW.centerX += (coords.x / (float)settingsFW.width - 0.5);
+    settingsFW.centerY += (0.5 - coords.y / (float)settingsFW.height);
+}
+
 void mousePressedFW(int button, int state, int x, int y) {
+    if (button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN) {
+        translateCamera((ScreenCoordinates){x, y});
+    }
+
     if (button != GLUT_LEFT_BUTTON) {
         return;
     }
