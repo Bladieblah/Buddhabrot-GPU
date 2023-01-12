@@ -1,5 +1,6 @@
 #include <cstdlib>
 #include <cstdio>
+#include <cmath>
 
 #include <OpenGL/gl.h>
 #include <OpenGL/glu.h>
@@ -56,8 +57,33 @@ void displayFW() {
     glutSwapBuffers();
 }
 
+void updateView(float scale, float centerX, float centerY, float theta) {
+    viewFW.scaleX = scale / viewFW.scaleY * viewFW.scaleX;
+    viewFW.scaleY = scale;
+    
+    viewFW.centerX = centerX;
+    viewFW.centerY = centerY;
+
+    viewFW.theta = theta;
+    viewFW.cosTheta = cos(theta);
+    viewFW.sinTheta = sin(theta);
+
+    opencl->setKernelArg("mandelStep", 8, sizeof(ViewSettings), (void*)&viewFW);
+}
+
+void selectRegion() {
+    if (mouseFW.state != GLUT_DOWN) {
+        return;
+    }
+
+
+}
+
 void keyPressedFW(unsigned char key, int x, int y) {
     switch (key) {
+        case 'a':
+            selectRegion();
+            break;
         case 'e':
             glutSetWindow(windowIdFW);
             glutPostRedisplay();
@@ -96,6 +122,9 @@ void mouseMovedFW(int x, int y) {
 }
 
 void onReshapeFW(int w, int h) {
+    settingsFW.windowW = w;
+    settingsFW.windowH = h;
+
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     glViewport(0, 0, w, h);
