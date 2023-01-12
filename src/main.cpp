@@ -150,7 +150,7 @@ void prepare() {
 
     float scaleY = 1.3;
     viewFW = {
-        scaleY / config->height * config->width, scaleY,
+        scaleY / (float)config->height * (float)config->width, scaleY,
         -0.5, 0.,
         0., 0., 1.,
         (int)config->width, (int)config->height

@@ -28,6 +28,28 @@ void drawGrid() {
     glEnd();
 }
 
+void drawBox() {
+    float aspectRatio = (float)settingsFW.windowW / (float)settingsFW.windowH;
+    float xc = 2 * mouseFW.xDown / (float)settingsFW.windowW - 1;
+    float yc = 1 - 2 * mouseFW.yDown / (float)settingsFW.windowH;
+
+    float dx1 = 2 * (mouseFW.x - mouseFW.xDown) / (float)settingsFW.windowW;
+    float dy1 = -2 * (mouseFW.y - mouseFW.yDown) / (float)settingsFW.windowH;
+
+    float dx2 = 2 * (mouseFW.y - mouseFW.yDown) * aspectRatio / settingsFW.windowW;
+    float dy2 = 2 * (mouseFW.x - mouseFW.xDown) * aspectRatio / settingsFW.windowH;
+
+    glColor4f(1,1,1,1);
+
+    glBegin(GL_LINE_STRIP);
+        glVertex2f(xc + dx1 + dx2, yc + dy1 + dy2);
+        glVertex2f(xc + dx1 - dx2, yc + dy1 - dy2);
+        glVertex2f(xc - dx1 - dx2, yc - dy1 - dy2);
+        glVertex2f(xc - dx1 + dx2, yc - dy1 + dy2);
+        glVertex2f(xc + dx1 + dx2, yc + dy1 + dy2);
+    glEnd();
+}
+
 void displayFW() {
     glutSetWindow(windowIdFW);
 
@@ -69,11 +91,20 @@ void displayFW() {
         drawGrid();
     }
 
+    if (mouseFW.state == GLUT_DOWN) {
+        drawBox();
+    }
+
     glFlush();
     glutSwapBuffers();
 }
 
 void updateView(float scale, float centerX, float centerY, float theta) {
+    fprintf(stderr, "Setting region to:\n");
+    fprintf(stderr, "scale = %.3f\n", scale);
+    fprintf(stderr, "center = (%.3f, %.3f)\n", centerX, centerY);
+    fprintf(stderr, "theta = %.3f\n", theta);
+
     viewFW.scaleX = scale / viewFW.scaleY * viewFW.scaleX;
     viewFW.scaleY = scale;
     
@@ -92,7 +123,20 @@ void selectRegion() {
         return;
     }
 
-    // Todo
+    ScreenCoordinate downP({mouseFW.xDown, mouseFW.yDown});
+    ScreenCoordinate upP({mouseFW.x, mouseFW.y});
+
+    FractalCoordinate downF = downP.toPixel(settingsFW).toFractal(viewFW);
+    FractalCoordinate upF   = upP.toPixel(settingsFW).toFractal(viewFW);
+
+    updateView(
+        sqrt(pow(upF.x - downF.x, 2) + pow(upF.y - downF.y, 2)),
+        downF.x, downF.y,
+        atan2(upF.y - downF.y, upF.x - downF.x)
+    );
+
+    opencl->step("resetCount");
+    opencl->step("initParticles");
 }
 
 void keyPressedFW(unsigned char key, int x, int y) {
