@@ -39,7 +39,7 @@ void displayFW() {
     );
 
     glPushMatrix();
-    glScalef(settingsFW.scale, settingsFW.scale, 1.);
+    glScalef(settingsFW.zoom, settingsFW.zoom, 1.);
     glTranslatef(-settingsFW.centerX, -settingsFW.centerY, 0.);
 
     glBegin(GL_QUADS);
@@ -76,7 +76,7 @@ void selectRegion() {
         return;
     }
 
-
+    // Todo
 }
 
 void keyPressedFW(unsigned char key, int x, int y) {

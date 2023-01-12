@@ -6,7 +6,7 @@
 typedef struct WindowSettings {
     uint32_t width, height;
     uint32_t windowW, windowH;
-    float scale = 1, centerX = 0, centerY = 0;
+    float zoom = 1, centerX = 0, centerY = 0;
 } WindowSettings;
 
 typedef struct MouseState {
