@@ -27,5 +27,6 @@ $(OBJDIR)%.o: $(SRCDIR)%.cpp
 
 clean:
 	rm -fv $(PROGNAME) $(OBJFILES)
+	rm -fv $(OBJDIR)*.d
 
 -include $(OBJFILES:.o=.d)

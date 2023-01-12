@@ -17,6 +17,17 @@ WindowSettings settingsFW;
 MouseState mouseFW;
 ViewSettings viewFW;
 
+void drawGrid() {
+    glBegin(GL_LINES);
+        glVertex2f(-1,0); glVertex2f(1,0);
+        glVertex2f(-1,0.5); glVertex2f(1,0.5);
+        glVertex2f(-1,-0.5); glVertex2f(1,-0.5);
+        glVertex2f(0,-1); glVertex2f(0,1);
+        glVertex2f(0.5,-1); glVertex2f(0.5,1);
+        glVertex2f(-0.5,-1); glVertex2f(-0.5,1);
+    glEnd();
+}
+
 void displayFW() {
     glutSetWindow(windowIdFW);
 
@@ -54,6 +65,10 @@ void displayFW() {
 
     glPopMatrix();
 
+    if (settingsFW.grid) {
+        drawGrid();
+    }
+
     glFlush();
     glutSwapBuffers();
 }
@@ -89,6 +104,15 @@ void keyPressedFW(unsigned char key, int x, int y) {
             glutSetWindow(windowIdFW);
             glutPostRedisplay();
             break;
+        
+        case 'g':
+            settingsFW.grid = ! settingsFW.grid;
+            break;
+        case 'r':
+            settingsFW.zoom = 1.;
+            settingsFW.centerX = 0.;
+            settingsFW.centerY = 0.;
+            break;
 
         case 'w':
             settingsFW.zoom *= 1.5;
@@ -100,7 +124,7 @@ void keyPressedFW(unsigned char key, int x, int y) {
         case 'q':
             exit(0);
             break;
-        case 'r':
+        case 'R':
             opencl->step("resetCount");
             break;
         default:
@@ -113,8 +137,8 @@ void specialKeyPressedFW(int key, int x, int y) {
 }
 
 void translateCamera(ScreenCoordinates coords) {
-    settingsFW.centerX += (coords.x / (float)settingsFW.width - 0.5);
-    settingsFW.centerY += (0.5 - coords.y / (float)settingsFW.height);
+    settingsFW.centerX += 2. / settingsFW.zoom * (coords.x / (float)settingsFW.width - 0.5);
+    settingsFW.centerY += 2. / settingsFW.zoom * (0.5 - coords.y / (float)settingsFW.height);
 }
 
 void mousePressedFW(int button, int state, int x, int y) {
