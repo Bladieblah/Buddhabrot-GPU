@@ -15,8 +15,9 @@ typedef struct MouseState {
 } MouseState;
 
 typedef struct ViewSettings {
-    float scale, centerX, centerY;
-    float theta;
+    float scaleX, scaleY;
+    float centerX, centerY;
+    float theta, sinTheta, cosTheta;
 } ViewSettings;
 
 void displayFW();
@@ -24,6 +25,7 @@ void displayFW();
 void createFractalWindow(char *name, uint32_t width, uint32_t height);
 void destroyFractalWindow();
 
+extern ViewSettings viewFW;
 extern uint32_t *pixelsFW;
 extern OpenCl *opencl;
 

@@ -86,6 +86,7 @@ void setKernelArgs() {
     opencl->setKernelBufferArg("mandelStep", 5, "randomIncrement");
     opencl->setKernelArg("mandelStep", 6, sizeof(int), (void*)&(config->threshold_count));
     opencl->setKernelArg("mandelStep", 7, sizeof(cl_int2), (void*)&resolution);
+    opencl->setKernelArg("mandelStep", 8, sizeof(ViewSettings), (void*)&viewFW);
     
     opencl->setKernelBufferArg("initParticles", 0, "particles");
     opencl->setKernelBufferArg("initParticles", 1, "threshold");
@@ -148,6 +149,13 @@ void prepare() {
 
     initState = (uint64_t *)malloc(config->particle_count * sizeof(uint64_t));
     initSeq = (uint64_t *)malloc(config->particle_count * sizeof(uint64_t));
+
+    float scaleY = 1.3;
+    viewFW = {
+        scaleY / config->height * config->width, scaleY,
+        -0.5, 0.,
+        0., 0., 1.
+    };
 
     prepareOpenCl();
 }

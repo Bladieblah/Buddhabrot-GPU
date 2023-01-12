@@ -13,6 +13,7 @@ uint32_t *pixelsFW;
 
 WindowSettings settingsFW;
 MouseState mouseFW;
+ViewSettings viewFW;
 
 void displayFW() {
     glutSetWindow(windowIdFW);
