@@ -22,6 +22,20 @@ PixelCoordinate FractalCoordinate::toPixel(ViewSettings view) {
     };
 }
 
+FractalCoordinate PixelCoordinate::toFractal(ViewSettings view) {
+    FractalCoordinate tmp({
+        x * 2 / (float)view.sizeX - 1,
+        y * 2 / (float)view.sizeY - 1
+    });
+
+    tmp.rotate(-view.sinTheta, view.cosTheta);
+
+    return (FractalCoordinate) {
+        x * view.scaleX + view.centerX,
+        y * view.scaleY + view.centerY
+    };
+}
+
 ScreenCoordinate PixelCoordinate::toScreen(WindowSettings settings) {
     return (ScreenCoordinate) {
         (int)((x / settings.width  - settings.centerX) * settings.zoom * settings.windowW),
