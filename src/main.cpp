@@ -154,7 +154,8 @@ void prepare() {
     viewFW = {
         scaleY / config->height * config->width, scaleY,
         -0.5, 0.,
-        0., 0., 1.
+        0., 0., 1.,
+        config->width, config->height
     };
 
     prepareOpenCl();

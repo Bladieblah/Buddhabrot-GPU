@@ -132,12 +132,13 @@ inline float uniformRand(
     float scaleX, scaleY;
     float centerX, centerY;
     float theta, sinTheta, cosTheta;
+    unsigned int sizeX, sizeY;
 } ViewSettings;
 
 inline float2 rotateCoords(float2 coords, ViewSettings view) {
     return (float2) {
         view.cosTheta * coords.x - view.sinTheta * coords.y,
-        view.sinTheta * coords.x + view.cosTheta * coords.y,
+        view.sinTheta * coords.x + view.cosTheta * coords.y
     };
 }
 
@@ -146,14 +147,14 @@ inline float2 rotateCoords(float2 coords, ViewSettings view) {
 inline float2 fractalToScreen(float2 fractalCoord, ViewSettings view) {
     return rotateCoords((float2) {
         (fractalCoord.x - view.centerX) / view.scaleX,
-        (fractalCoord.y - view.centerY) / view.scaleY,
+        (fractalCoord.y - view.centerY) / view.scaleY
     }, view);
 }
 
 inline int2 screenToPixel(float2 screenCoord, uint2 resolution) {
     return (int2) {
         (1 + screenCoord.x) / 2 * resolution.x,
-        (1 + screenCoord.y) / 2 * resolution.y,
+        (1 + screenCoord.y) / 2 * resolution.y
     };
 }
 

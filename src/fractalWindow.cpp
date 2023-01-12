@@ -136,14 +136,14 @@ void specialKeyPressedFW(int key, int x, int y) {
 
 }
 
-void translateCamera(ScreenCoordinates coords) {
+void translateCamera(ScreenCoordinate coords) {
     settingsFW.centerX += 2. / settingsFW.zoom * (coords.x / (float)settingsFW.width - 0.5);
     settingsFW.centerY += 2. / settingsFW.zoom * (0.5 - coords.y / (float)settingsFW.height);
 }
 
 void mousePressedFW(int button, int state, int x, int y) {
     if (button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN) {
-        translateCamera((ScreenCoordinates){x, y});
+        translateCamera((ScreenCoordinate){x, y});
     }
 
     if (button != GLUT_LEFT_BUTTON) {
