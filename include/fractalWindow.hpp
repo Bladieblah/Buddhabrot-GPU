@@ -20,7 +20,7 @@ typedef struct ViewSettings {
     float scaleX, scaleY;
     float centerX, centerY;
     float theta, sinTheta, cosTheta;
-    unsigned int sizeX, sizeY;
+    int sizeX, sizeY;
 } ViewSettings;
 
 void displayFW();

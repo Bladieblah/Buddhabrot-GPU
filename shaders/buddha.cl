@@ -132,7 +132,7 @@ inline float uniformRand(
     float scaleX, scaleY;
     float centerX, centerY;
     float theta, sinTheta, cosTheta;
-    unsigned int sizeX, sizeY;
+    int sizeX, sizeY;
 } ViewSettings;
 
 inline float2 rotateCoords(float2 coords, ViewSettings view) {
@@ -151,14 +151,14 @@ inline float2 fractalToScreen(float2 fractalCoord, ViewSettings view) {
     }, view);
 }
 
-inline uint2 screenToPixel(float2 screenCoord, ViewSettings view) {
-    return (uint2) {
+inline int2 screenToPixel(float2 screenCoord, ViewSettings view) {
+    return (int2) {
         (1 + screenCoord.x) / 2 * view.sizeX,
         (1 + screenCoord.y) / 2 * view.sizeY
     };
 }
 
- inline uint2 fractalToPixel(float2 fractalCoord, ViewSettings view) {
+ inline int2 fractalToPixel(float2 fractalCoord, ViewSettings view) {
     return screenToPixel(fractalToScreen(fractalCoord, view), view);
  }
 
@@ -207,7 +207,7 @@ inline void addPath(
     unsigned int pixelCount = view.sizeX * view.sizeY;
     
     for (unsigned int i = 0; i < particle.iterCount; i++) {
-        uint2 pixel = fractalToPixel(path[pathStart + i], view);
+        int2 pixel = fractalToPixel(path[pathStart + i], view);
 
         if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) {
             atomic_inc(&count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]);
