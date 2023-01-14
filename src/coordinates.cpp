@@ -10,29 +10,29 @@ void FractalCoordinate::rotate(float sinTheta, float cosTheta) {
 
 PixelCoordinate FractalCoordinate::toPixel(ViewSettings view) {
     FractalCoordinate tmp({
-        (x - view.centerX) / view.scaleX,
-        (y - view.centerX) / view.scaleY
+        (x - view.centerX),
+        (y - view.centerY)
     });
 
     tmp.rotate(view.sinTheta, view.cosTheta);
 
     return (PixelCoordinate) {
-        (int)((1 + x) / 2 * view.sizeX),
-        (int)((1 + y) / 2 * view.sizeY)
+        (int)((1 + tmp.x / view.scaleX) / 2 * view.sizeX),
+        (int)((1 + tmp.y / view.scaleY) / 2 * view.sizeY)
     };
 }
 
 FractalCoordinate PixelCoordinate::toFractal(ViewSettings view) {
     FractalCoordinate tmp({
-        x * 2 / (float)view.sizeX - 1,
-        y * 2 / (float)view.sizeY - 1
+        (2 * (x / (float)view.sizeX) - 1) * view.scaleX,
+        (2 * (y / (float)view.sizeY) - 1) * view.scaleY
     });
 
     tmp.rotate(-view.sinTheta, view.cosTheta);
 
     return (FractalCoordinate) {
-        tmp.x * view.scaleX + view.centerX,
-        tmp.y * view.scaleY + view.centerY
+        tmp.x + view.centerX,
+        tmp.y + view.centerY
     };
 }
 

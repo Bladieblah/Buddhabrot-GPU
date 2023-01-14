@@ -128,18 +128,9 @@ void selectRegion() {
 
     ScreenCoordinate downP({mouseFW.xDown, mouseFW.yDown});
     ScreenCoordinate upP({mouseFW.x, mouseFW.y});
-    fprintf(stderr, "\n");
-    fprintf(stderr, "Down = (%d, %d)\n", downP.x, downP.y);
-    fprintf(stderr, "Up = (%d, %d)\n", upP.x, upP.y);
-
-    fprintf(stderr, "Down = (%d, %d)\n", downP.toPixel(settingsFW).x, downP.toPixel(settingsFW).y);
-    fprintf(stderr, "Up = (%d, %d)\n", upP.toPixel(settingsFW).x, upP.toPixel(settingsFW).y);
 
     FractalCoordinate downF = downP.toPixel(settingsFW).toFractal(viewFW);
     FractalCoordinate upF   = upP.toPixel(settingsFW).toFractal(viewFW);
-
-    fprintf(stderr, "Down = (%f, %f)\n", downF.x, downF.y);
-    fprintf(stderr, "Up = (%f, %f)\n", upF.x, upF.y);
 
     updateView(
         sqrt(pow(upF.x - downF.x, 2) + pow(upF.y - downF.y, 2)),

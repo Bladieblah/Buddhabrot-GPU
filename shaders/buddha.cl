@@ -145,10 +145,15 @@ inline float2 rotateCoords(float2 coords, ViewSettings view) {
 // Transform fractal coordinates to screen coordinates, following openGL conventions
 // The viewport spans [-1,1] in both dimensions
 inline float2 fractalToScreen(float2 fractalCoord, ViewSettings view) {
-    return rotateCoords((float2) {
-        (fractalCoord.x - view.centerX) / view.scaleX,
-        (fractalCoord.y - view.centerY) / view.scaleY
+    float2 tmp = rotateCoords((float2) {
+        (fractalCoord.x - view.centerX),
+        (fractalCoord.y - view.centerY)
     }, view);
+
+    tmp.x = tmp.x / view.scaleX;
+    tmp.y = tmp.y / view.scaleY;
+
+    return tmp;
 }
 
 inline int2 screenToPixel(float2 screenCoord, ViewSettings view) {
