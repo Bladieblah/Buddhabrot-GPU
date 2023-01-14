@@ -1,4 +1,5 @@
 #include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <math.h>
@@ -61,12 +62,13 @@ void createBufferSpecs() {
 vector<KernelSpec> kernelSpecs;
 void createKernelSpecs() {
     kernelSpecs = {
-        {"seedNoise", {NULL, 1, {config->particle_count, 0}, "seedNoise"}},
-        {"mandelStep", {NULL, 1, {config->particle_count, 0}, "mandelStep"}},
+        {"seedNoise",     {NULL, 1, {config->particle_count, 0}, "seedNoise"}},
         {"initParticles", {NULL, 1, {config->particle_count, 0}, "initParticles"}},
-        {"findMax1", {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, "findMax1"}},
-        {"findMax2", {NULL, 1, {config->threshold_count, 0}, "findMax2"}},
-        {"renderImage", {NULL, 2, {config->width, config->height}, "renderImage"}},
+        {"mandelStep",    {NULL, 1, {config->particle_count, 0}, "mandelStep"}},
+        {"resetCount",    {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, "resetCount"}},
+        {"findMax1",      {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, "findMax1"}},
+        {"findMax2",      {NULL, 1, {config->threshold_count, 0}, "findMax2"}},
+        {"renderImage",   {NULL, 2, {config->width, config->height}, "renderImage"}},
     };
 }
 
@@ -76,7 +78,6 @@ void setKernelArgs() {
     opencl->setKernelBufferArg("seedNoise", 2, "initState");
     opencl->setKernelBufferArg("seedNoise", 3, "initSeq");
 
-    cl_uint2 resolution = {config->width, config->height};
     opencl->setKernelBufferArg("mandelStep", 0, "particles");
     opencl->setKernelBufferArg("mandelStep", 1, "count");
     opencl->setKernelBufferArg("mandelStep", 2, "threshold");
@@ -84,7 +85,7 @@ void setKernelArgs() {
     opencl->setKernelBufferArg("mandelStep", 4, "randomState");
     opencl->setKernelBufferArg("mandelStep", 5, "randomIncrement");
     opencl->setKernelArg("mandelStep", 6, sizeof(int), (void*)&(config->threshold_count));
-    opencl->setKernelArg("mandelStep", 7, sizeof(cl_int2), (void*)&resolution);
+    opencl->setKernelArg("mandelStep", 7, sizeof(ViewSettings), (void*)&viewFW);
     
     opencl->setKernelBufferArg("initParticles", 0, "particles");
     opencl->setKernelBufferArg("initParticles", 1, "threshold");
@@ -93,6 +94,9 @@ void setKernelArgs() {
     opencl->setKernelBufferArg("initParticles", 4, "randomIncrement");
     opencl->setKernelArg("initParticles", 5, sizeof(int), (void*)&(config->threshold_count));
     
+    opencl->setKernelBufferArg("resetCount", 0, "count");
+    opencl->setKernelArg("resetCount", 1, sizeof(unsigned int), (void*)&(config->maximum_size));
+
     opencl->setKernelBufferArg("findMax1", 0, "count");
     opencl->setKernelBufferArg("findMax1", 1, "maxima");
     opencl->setKernelArg("findMax1", 2, sizeof(unsigned int), (void*)&(config->maximum_size));
@@ -145,6 +149,14 @@ void prepare() {
     initState = (uint64_t *)malloc(config->particle_count * sizeof(uint64_t));
     initSeq = (uint64_t *)malloc(config->particle_count * sizeof(uint64_t));
 
+    float scaleY = 1.3;
+    viewFW = {
+        scaleY / (float)config->height * (float)config->width, scaleY,
+        -0.5, 0.,
+        0., 0., 1.,
+        (int)config->width, (int)config->height
+    };
+
     prepareOpenCl();
 }
 
@@ -158,10 +170,10 @@ void display() {
     for (int i = 0; i < config->frame_steps; i++) {
         opencl->step("mandelStep");
     }
+
     opencl->step("findMax1");
     opencl->step("findMax2");
     opencl->step("renderImage");
-    opencl->flush();
     opencl->readBuffer("image", pixelsFW);
 
     displayFW();
@@ -173,11 +185,15 @@ void display() {
 }
 
 void cleanAll() {
+    fprintf(stderr, "\nExiting\n");
     destroyFractalWindow();
     opencl->cleanup();
 }
 
 int main(int argc, char **argv) {
+
+    fprintf(stderr, "%.3f\n", atan2(1,0));
+    fprintf(stderr, "%.3f\n", atan2(0,1));
     config = new Config("config.cfg");
 
     int remainder = config->width * config->height % config->maximum_size;

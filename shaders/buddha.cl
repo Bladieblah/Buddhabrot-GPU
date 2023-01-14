@@ -128,30 +128,43 @@ inline float uniformRand(
  * Coordinate transformations
  */
 
-__constant float2 VIEW_CENTER = {-0.5, 0.};
-__constant float SCALEY = 1.3;
-__constant float VIEW_ANGLE = 0;
+ typedef struct ViewSettings {
+    float scaleX, scaleY;
+    float centerX, centerY;
+    float theta, sinTheta, cosTheta;
+    int sizeX, sizeY;
+} ViewSettings;
 
-__constant float2 STP_OFFSET = {1., 1.};
-__constant float2 STP_SCALE = {.5, .5};
+inline float2 rotateCoords(float2 coords, ViewSettings view) {
+    return (float2) {
+        view.cosTheta * coords.x - view.sinTheta * coords.y,
+        view.sinTheta * coords.x + view.cosTheta * coords.y
+    };
+}
 
 // Transform fractal coordinates to screen coordinates, following openGL conventions
 // The viewport spans [-1,1] in both dimensions
-inline float2 fractalToScreen(float2 fractalCoord, float2 resolution) {
-    return (fractalCoord - VIEW_CENTER) / (float2){SCALEY / resolution.y * resolution.x, SCALEY};
+inline float2 fractalToScreen(float2 fractalCoord, ViewSettings view) {
+    float2 tmp = rotateCoords((float2) {
+        (fractalCoord.x - view.centerX),
+        (fractalCoord.y - view.centerY)
+    }, view);
+
+    tmp.x = tmp.x / view.scaleX;
+    tmp.y = tmp.y / view.scaleY;
+
+    return tmp;
 }
 
-inline int2 screenToPixel(float2 screenCoord, uint2 resolution) {
-    int2 result;
-
-    result.x = (1 + screenCoord.x) / 2 * resolution.x;
-    result.y = (1 + screenCoord.y) / 2 * resolution.y;
-
-    return result;
+inline int2 screenToPixel(float2 screenCoord, ViewSettings view) {
+    return (int2) {
+        (1 + screenCoord.x) / 2 * view.sizeX,
+        (1 + screenCoord.y) / 2 * view.sizeY
+    };
 }
 
- inline int2 fractalToPixel(float2 fractalCoord, uint2 resolution) {
-    return screenToPixel(fractalToScreen(fractalCoord, (float2){(float)resolution.x, (float)resolution.y}), resolution);
+ inline int2 fractalToPixel(float2 fractalCoord, ViewSettings view) {
+    return screenToPixel(fractalToScreen(fractalCoord, view), view);
  }
 
 /**
@@ -163,6 +176,14 @@ typedef struct Particle {
     float2 offset;
     unsigned int iterCount;
 } Particle;
+
+__kernel void resetCount(global unsigned int *count, int size) {
+    const int x = get_global_id(0);
+
+    for (int i = 0; i < size; i++) {
+        count[size * x + i] = 0;
+    }
+}
 
 inline int matchThreshold(
     Particle particle,
@@ -185,16 +206,23 @@ inline void addPath(
     global unsigned int *threshold,
     int thresholdCount,
     unsigned int pathStart,
-    uint2 resolution,
-    int thresholdIndex
+    int thresholdIndex,
+    ViewSettings view
 ) {
-    unsigned int pixelCount = resolution.x * resolution.y;
+    unsigned int pixelCount = view.sizeX * view.sizeY;
     
     for (unsigned int i = 0; i < particle.iterCount; i++) {
-        int2 pixel = fractalToPixel(path[pathStart + i], resolution);
+        int2 pixel = fractalToPixel(path[pathStart + i], view);
 
-        if (! (pixel.x < 0 || pixel.x >= resolution.x || pixel.y < 0 || pixel.y >= resolution.y)) {
-            atomic_inc(&count[thresholdIndex * pixelCount + resolution.x * pixel.y + pixel.x]);
+        if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) {
+            atomic_inc(&count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]);
+        }
+
+        path[pathStart + i].y = -path[pathStart + i].y;
+        pixel = fractalToPixel(path[pathStart + i], view);
+
+        if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) {
+            atomic_inc(&count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]);
         }
     }
 }
@@ -239,7 +267,7 @@ __kernel void mandelStep(
     global ulong *randomState,
     global ulong *randomIncrement,
     int thresholdCount,
-    uint2 resolution
+    ViewSettings view
 ) {
     const int x = get_global_id(0);
     const unsigned int maxLength = threshold[thresholdCount - 1];
@@ -251,7 +279,7 @@ __kernel void mandelStep(
 
     if (cnorm(particles[x].pos) > 16) {
         int thresholdIndex = matchThreshold(particles[x], threshold, thresholdCount);
-        addPath(particles[x], path, count, threshold, thresholdCount, pathIndex, resolution, thresholdIndex);
+        addPath(particles[x], path, count, threshold, thresholdCount, pathIndex, thresholdIndex, view);
         resetParticle(particles, path, pathIndex, randomState, randomIncrement, x);
     }
 
