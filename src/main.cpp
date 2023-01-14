@@ -191,9 +191,6 @@ void cleanAll() {
 }
 
 int main(int argc, char **argv) {
-
-    fprintf(stderr, "%.3f\n", atan2(1,0));
-    fprintf(stderr, "%.3f\n", atan2(0,1));
     config = new Config("config.cfg");
 
     int remainder = config->width * config->height % config->maximum_size;
