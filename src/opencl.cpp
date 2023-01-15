@@ -249,3 +249,20 @@ void OpenCl::getDeviceIds(cl_platform_id platformId) {
         }
     }
 }
+
+void OpenCl::startTimer() {
+    ret = clEnqueueMarkerWithWaitList(command_queue, 0, NULL, &timer_event);
+}
+
+cl_ulong OpenCl::getTime() {
+    cl_ulong start, end;
+
+    clFinish(command_queue);
+
+    clGetEventProfilingInfo(timer_event, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &start, NULL);
+
+    // Retrieve the end time
+    clGetEventProfilingInfo(timer_event, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &end, NULL);
+
+    return end - start;
+}

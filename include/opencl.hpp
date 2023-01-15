@@ -52,6 +52,9 @@ public:
     void printDeviceTypes();
     void getDeviceIds(cl_platform_id platformId);
 
+    void startTimer();
+    cl_ulong getTime();
+
     cl_platform_id *platform_ids;
     cl_platform_id platform_id;
     
@@ -60,6 +63,8 @@ public:
 
     cl_context context;
     cl_command_queue command_queue;
+
+    cl_event timer_event;
 
 
     cl_program program;
