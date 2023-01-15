@@ -167,25 +167,41 @@ void display() {
         return;
     }
 
+    opencl->startTimer();
     for (int i = 0; i < config->frame_steps; i++) {
         opencl->step("mandelStep");
     }
+    cl_ulong mandelTime = opencl->getTime();
 
+    opencl->startTimer();
     opencl->step("findMax1");
+    cl_ulong max1 = opencl->getTime();
+    opencl->startTimer();
     opencl->step("findMax2");
+    cl_ulong max2 = opencl->getTime();
+    opencl->startTimer();
     opencl->step("renderImage");
+    cl_ulong render = opencl->getTime();
+    opencl->startTimer();
     opencl->readBuffer("image", pixelsFW);
+    cl_ulong read = opencl->getTime();
 
     displayFW();
 
     chrono::high_resolution_clock::time_point temp = chrono::high_resolution_clock::now();
     chrono::duration<float> time_span = chrono::duration_cast<chrono::duration<float>>(temp - frameTime);
-    fprintf(stderr, "\rStep = %d, time = %.4g            ", frameCount / 2, time_span.count());
+    fprintf(stderr, "Step = %d, time = %.4g            \n", frameCount / 2, time_span.count());
+    fprintf(stderr, "MandelStep = %.9llu\n", mandelTime);
+    fprintf(stderr, "Max1       = %.9llu\n", max1);
+    fprintf(stderr, "Max2       = %.9llu\n", max2);
+    fprintf(stderr, "Render     = %.9llu\n", render);
+    fprintf(stderr, "Read       = %.9llu", read);
+    fprintf(stderr, "\x1b[5A");
     frameTime = temp;
 }
 
 void cleanAll() {
-    fprintf(stderr, "\nExiting\n");
+    fprintf(stderr, "\n\n\n\n\nExiting\n");
     destroyFractalWindow();
     opencl->cleanup();
 }

@@ -39,7 +39,7 @@ void OpenCl::prepare(vector<BufferSpec> bufferSpecs, vector<KernelSpec> kernelSp
       fprintf(stderr, "Failed on function clCreateContext: %d\n", ret);
 
     // Create command queue
-    command_queue = clCreateCommandQueue(context, device_id, 0, &ret);
+    command_queue = clCreateCommandQueue(context, device_id, CL_QUEUE_PROFILING_ENABLE, &ret);
 
     // Create buffers
     for (BufferSpec bufferSpec : bufferSpecs) {
@@ -251,6 +251,7 @@ void OpenCl::getDeviceIds(cl_platform_id platformId) {
 }
 
 void OpenCl::startTimer() {
+    clReleaseEvent(timer_event);
     ret = clEnqueueMarkerWithWaitList(command_queue, 0, NULL, &timer_event);
 }
 
