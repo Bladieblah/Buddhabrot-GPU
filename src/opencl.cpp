@@ -162,7 +162,7 @@ void OpenCl::step(string name, int count) {
     startTimer();
 
     for (int i = 0; i < count; i++) {
-        ret = clEnqueueNDRangeKernel(command_queue, kernel.kernel, kernel.work_dim, NULL, kernel.item_size, NULL, 0, NULL, NULL);
+        ret = clEnqueueNDRangeKernel(command_queue, kernel.kernel, kernel.work_dim, NULL, kernel.global_size, kernel.local_size, 0, NULL, NULL);
         
         if (ret != CL_SUCCESS) {
             fprintf(stderr, "Failed executing kernel [%s]: %d\n", name.c_str(), ret);
@@ -176,7 +176,13 @@ void OpenCl::step(string name, int count) {
         fprintf(stderr, " ");
     }
 
-    fprintf(stderr, "Chrono = %08.1fμs OpenCl = %08.1fμs\n", chronoTime, clTime);
+    fprintf(stderr, "Chrono = %09.1fμs", chronoTime);
+    
+    if (profile) {
+        fprintf(stderr, "OpenCL = %09.1fμs", clTime);
+    }
+
+    fprintf(stderr, "\n");
 }
 
 void OpenCl::readBuffer(string name, void *pointer) {
@@ -198,7 +204,13 @@ void OpenCl::readBuffer(string name, void *pointer) {
         fprintf(stderr, " ");
     }
 
-    fprintf(stderr, "Chrono = %08.1fμs OpenCl = %08.1fμs\n", chronoTime, clTime);
+    fprintf(stderr, "Chrono = %09.1fμs", chronoTime);
+    
+    if (profile) {
+        fprintf(stderr, "OpenCL = %09.1fμs", clTime);
+    }
+
+    fprintf(stderr, "\n");
 }
 
 void OpenCl::cleanup() {

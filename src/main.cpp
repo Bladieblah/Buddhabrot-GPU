@@ -61,14 +61,15 @@ void createBufferSpecs() {
 
 vector<KernelSpec> kernelSpecs;
 void createKernelSpecs() {
+    fprintf(stderr, "Blabla %d\n", config->threshold_count * maximaKernelSize);
     kernelSpecs = {
-        {"seedNoise",     {NULL, 1, {config->particle_count, 0}, "seedNoise"}},
-        {"initParticles", {NULL, 1, {config->particle_count, 0}, "initParticles"}},
-        {"mandelStep",    {NULL, 1, {config->particle_count, 0}, "mandelStep"}},
-        {"resetCount",    {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, "resetCount"}},
-        {"findMax1",      {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, "findMax1"}},
-        {"findMax2",      {NULL, 1, {config->threshold_count, 0}, "findMax2"}},
-        {"renderImage",   {NULL, 2, {config->width, config->height}, "renderImage"}},
+        {"seedNoise",     {NULL, 1, {config->particle_count, 0}, {128, 0}, "seedNoise"}},
+        {"initParticles", {NULL, 1, {config->particle_count, 0}, {128, 0}, "initParticles"}},
+        {"mandelStep",    {NULL, 1, {config->particle_count, 0}, {128, 0}, "mandelStep"}},
+        {"resetCount",    {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {120, 0}, "resetCount"}},
+        {"findMax1",      {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {120, 0}, "findMax1"}},
+        {"findMax2",      {NULL, 1, {config->threshold_count, 0}, {config->threshold_count, 0}, "findMax2"}},
+        {"renderImage",   {NULL, 2, {config->width, config->height}, {16, 16}, "renderImage"}},
     };
 }
 
@@ -191,7 +192,7 @@ void cleanAll() {
 
 int main(int argc, char **argv) {
     config = new Config("config.cfg");
-    config->printValues();
+    // config->printValues();
 
     int remainder = config->width * config->height % config->maximum_size;
 
@@ -206,6 +207,15 @@ int main(int argc, char **argv) {
     prepare();
 
     atexit(&cleanAll);
+
+    opencl->step("mandelStep", config->frame_steps);
+    opencl->step("findMax1");
+    opencl->step("findMax2");
+    opencl->step("renderImage");
+    opencl->readBuffer("image", pixelsFW);
+    // fprintf(stderr, "\x1b[6A");
+
+
 
     glutInit(&argc, argv);
     createFractalWindow("Fractal Window", config->width, config->height);

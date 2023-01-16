@@ -28,7 +28,8 @@ typedef struct BufferSpec {
 typedef struct OpenClKernel {
     cl_kernel kernel;
     cl_uint work_dim;
-    size_t item_size[2];
+    size_t global_size[2];
+    size_t local_size[2];
     std::string name;
 } OpenClKernel;
 

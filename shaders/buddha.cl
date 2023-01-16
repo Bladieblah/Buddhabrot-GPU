@@ -228,7 +228,7 @@ inline void addPath(
 }
 
 inline void resetParticle(
-    global Particle *particles,
+    Particle *particle,
     global float2 *path,
     unsigned int pathStart,
     global ulong *randomState,
@@ -240,9 +240,9 @@ inline void resetParticle(
         (6. * uniformRand(randomState, randomIncrement, x) - 3.)
     );
 
-    particles[x].iterCount = 1;
-    particles[x].pos = newOffset;
-    particles[x].offset = newOffset;
+    particle->iterCount = 1;
+    particle->pos = newOffset;
+    particle->offset = newOffset;
     path[pathStart] = newOffset;
 }
 
@@ -256,7 +256,9 @@ __kernel void initParticles(
 ) {
     const int x = get_global_id(0);
 
-    resetParticle(particles, path, x * threshold[thresholdCount - 1], randomState, randomIncrement, x);
+    Particle tmp = particles[x];
+    resetParticle(&tmp, path, x * threshold[thresholdCount - 1], randomState, randomIncrement, x);
+    particles[x] = tmp;
 }
 
 __kernel void mandelStep(
@@ -273,19 +275,23 @@ __kernel void mandelStep(
     const unsigned int maxLength = threshold[thresholdCount - 1];
     const unsigned int pathIndex = x * maxLength;
 
-    particles[x].pos = csquare(particles[x].pos) + particles[x].offset;
-    path[pathIndex + particles[x].iterCount] = particles[x].pos;
-    particles[x].iterCount++;
+    Particle tmp = particles[x];
 
-    if (cnorm(particles[x].pos) > 16) {
-        int thresholdIndex = matchThreshold(particles[x], threshold, thresholdCount);
-        addPath(particles[x], path, count, threshold, thresholdCount, pathIndex, thresholdIndex, view);
-        resetParticle(particles, path, pathIndex, randomState, randomIncrement, x);
+    tmp.pos = csquare(tmp.pos) + tmp.offset;
+    path[pathIndex + tmp.iterCount] = tmp.pos;
+    tmp.iterCount++;
+
+    if (cnorm(tmp.pos) > 16) {
+        int thresholdIndex = matchThreshold(tmp, threshold, thresholdCount);
+        addPath(tmp, path, count, threshold, thresholdCount, pathIndex, thresholdIndex, view);
+        resetParticle(&tmp, path, pathIndex, randomState, randomIncrement, x);
     }
 
-    if (particles[x].iterCount >= maxLength) {
-        resetParticle(particles, path, pathIndex, randomState, randomIncrement, x);
+    if (tmp.iterCount >= maxLength) {
+        resetParticle(&tmp, path, pathIndex, randomState, randomIncrement, x);
     }
+
+    particles[x] = tmp;
 }
 
 /**
