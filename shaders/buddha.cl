@@ -277,18 +277,20 @@ __kernel void mandelStep(
 
     Particle tmp = particles[x];
 
-    tmp.pos = csquare(tmp.pos) + tmp.offset;
-    path[pathIndex + tmp.iterCount] = tmp.pos;
-    tmp.iterCount++;
+    for (int i=0; i < 4000; i++) {
+        tmp.pos = csquare(tmp.pos) + tmp.offset;
+        path[pathIndex + tmp.iterCount] = tmp.pos;
+        tmp.iterCount++;
 
-    if (cnorm(tmp.pos) > 16) {
-        int thresholdIndex = matchThreshold(tmp, threshold, thresholdCount);
-        addPath(tmp, path, count, threshold, thresholdCount, pathIndex, thresholdIndex, view);
-        resetParticle(&tmp, path, pathIndex, randomState, randomIncrement, x);
-    }
+        if (cnorm(tmp.pos) > 16) {
+            int thresholdIndex = matchThreshold(tmp, threshold, thresholdCount);
+            addPath(tmp, path, count, threshold, thresholdCount, pathIndex, thresholdIndex, view);
+            resetParticle(&tmp, path, pathIndex, randomState, randomIncrement, x);
+        }
 
-    if (tmp.iterCount >= maxLength) {
-        resetParticle(&tmp, path, pathIndex, randomState, randomIncrement, x);
+        if (tmp.iterCount >= maxLength) {
+            resetParticle(&tmp, path, pathIndex, randomState, randomIncrement, x);
+        }
     }
 
     particles[x] = tmp;

@@ -61,7 +61,6 @@ void createBufferSpecs() {
 
 vector<KernelSpec> kernelSpecs;
 void createKernelSpecs() {
-    fprintf(stderr, "Blabla %d\n", config->threshold_count * maximaKernelSize);
     kernelSpecs = {
         {"seedNoise",     {NULL, 1, {config->particle_count, 0}, {128, 0}, "seedNoise"}},
         {"initParticles", {NULL, 1, {config->particle_count, 0}, {128, 0}, "initParticles"}},
@@ -208,7 +207,7 @@ int main(int argc, char **argv) {
 
     atexit(&cleanAll);
 
-    opencl->step("mandelStep", config->frame_steps);
+    opencl->step("mandelStep", 10 * config->frame_steps);
     opencl->step("findMax1");
     opencl->step("findMax2");
     opencl->step("renderImage");
