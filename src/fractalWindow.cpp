@@ -100,7 +100,7 @@ void displayFW() {
 }
 
 void updateView(float scale, float centerX, float centerY, float theta) {
-    fprintf(stderr, "Setting region to:\n");
+    fprintf(stderr, "\n\n\n\n\n\nSetting region to:\n");
     fprintf(stderr, "scale = %.3f\n", scale);
     fprintf(stderr, "center = (%.3f, %.3f)\n", centerX, centerY);
     fprintf(stderr, "theta = %.3f\n", theta);
