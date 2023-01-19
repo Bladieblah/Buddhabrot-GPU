@@ -184,8 +184,8 @@ void specialKeyPressedFW(int key, int x, int y) {
 }
 
 void translateCamera(ScreenCoordinate coords) {
-    settingsFW.centerX += 2. / settingsFW.zoom * (coords.x / (float)settingsFW.width - 0.5);
-    settingsFW.centerY += 2. / settingsFW.zoom * (0.5 - coords.y / (float)settingsFW.height);
+    settingsFW.centerX += 2. / settingsFW.zoom * (coords.x / (float)settingsFW.windowW - 0.5);
+    settingsFW.centerY += 2. / settingsFW.zoom * (0.5 - coords.y / (float)settingsFW.windowH);
 }
 
 void mousePressedFW(int button, int state, int x, int y) {

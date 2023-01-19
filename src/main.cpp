@@ -207,11 +207,11 @@ int main(int argc, char **argv) {
 
     atexit(&cleanAll);
 
-    opencl->step("mandelStep", 10 * config->frame_steps);
-    opencl->step("findMax1");
-    opencl->step("findMax2");
-    opencl->step("renderImage");
-    opencl->readBuffer("image", pixelsFW);
+    // opencl->step("mandelStep", 10 * config->frame_steps);
+    // opencl->step("findMax1");
+    // opencl->step("findMax2");
+    // opencl->step("renderImage");
+    // opencl->readBuffer("image", pixelsFW);
     // fprintf(stderr, "\x1b[6A");
 
 
