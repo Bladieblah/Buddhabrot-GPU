@@ -46,8 +46,8 @@ __constant float d[] = {
     3.754408661907416e+00
 };
 
-inline double inverseNormalCdf(double uniform) {
-	double q, r;
+inline float inverseNormalCdf(float uniform) {
+	float q, r;
 
 	if (uniform <= 0) {
 		return -HUGE_VAL;
@@ -106,6 +106,14 @@ inline float uniformRand(
     int x
 ) {
     return (float)pcg32Random(randomState, randomIncrement, x) / PCG_MAX_1;
+}
+
+inline float gaussianRand(
+    global ulong *randomState,
+    global ulong *randomIncrement,
+    int x
+) {
+    return inverseNormalCdf(uniformRand(randomState, randomIncrement, x));
 }
 
 /**
@@ -173,8 +181,9 @@ inline int2 screenToPixel(float2 screenCoord, ViewSettings view) {
 
 typedef struct Particle {
     float2 pos;
-    float2 offset;
+    float2 offset, prevOffset;
     unsigned int iterCount;
+    float score, prevScore;
 } Particle;
 
 __kernel void resetCount(global unsigned int *count, int size) {
@@ -200,7 +209,7 @@ inline int matchThreshold(
 }
 
 inline void addPath(
-    Particle particle,
+    Particle *particle,
     global float2 *path,
     global unsigned int *count,
     global unsigned int *threshold,
@@ -210,12 +219,14 @@ inline void addPath(
     ViewSettings view
 ) {
     unsigned int pixelCount = view.sizeX * view.sizeY;
+    float deltaScore = 1. / (float)particle->iterCount;
     
-    for (unsigned int i = 0; i < particle.iterCount; i++) {
+    for (unsigned int i = 0; i < particle->iterCount; i++) {
         int2 pixel = fractalToPixel(path[pathStart + i], view);
 
         if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) {
             atomic_inc(&count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]);
+            particle->score += deltaScore;
         }
 
         path[pathStart + i].y = -path[pathStart + i].y;
@@ -225,6 +236,8 @@ inline void addPath(
             atomic_inc(&count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]);
         }
     }
+
+    particle->score = pown(particle->score, 2);
 }
 
 inline void resetParticle(
@@ -243,6 +256,39 @@ inline void resetParticle(
     particle->iterCount = 1;
     particle->pos = newOffset;
     particle->offset = newOffset;
+    particle->prevOffset = newOffset;
+    particle->score = 0;
+    particle->prevScore = 0;
+
+    path[pathStart] = newOffset;
+}
+
+inline void mutateParticle(
+    Particle *particle,
+    global float2 *path,
+    unsigned int pathStart,
+    global ulong *randomState,
+    global ulong *randomIncrement,
+    int x,
+    ViewSettings view
+) {
+    if (particle->prevScore == 0 && particle->score == 0) {
+        resetParticle(particle, path, pathStart, randomState, randomIncrement, x);
+    } else if (particle->score > particle->prevScore || particle->score / particle->prevScore > uniformRand(randomState, randomIncrement, x)) {
+        particle->prevScore = particle->score;
+        particle->prevOffset = particle->offset;
+    }
+
+    float2 newOffset = (float2)(
+        particle->prevOffset.x + 0.05 * view.scaleY * gaussianRand(randomState, randomIncrement, x),
+        particle->prevOffset.y + 0.05 * view.scaleY * gaussianRand(randomState, randomIncrement, x)
+    );
+
+    particle->iterCount = 1;
+    particle->pos = newOffset;
+    particle->offset = newOffset;
+    particle->score = 0;
+
     path[pathStart] = newOffset;
 }
 
@@ -277,7 +323,7 @@ __kernel void mandelStep(
 
     Particle tmp = particles[x];
 
-    for (int i=0; i < 800; i++) {
+    for (int i = 0; i < 800; i++) {
         tmp.pos = csquare(tmp.pos) + tmp.offset;
         path[pathIndex + tmp.iterCount] = tmp.pos;
         tmp.iterCount++;
@@ -300,12 +346,12 @@ __kernel void mandelStep(
 
         if (fabs(tmp.pos.x) > 4 || fabs(tmp.pos.y) > 4 || cnorm(tmp.pos) > 16) {
             int thresholdIndex = matchThreshold(tmp, threshold, thresholdCount);
-            addPath(tmp, path, count, threshold, thresholdCount, pathIndex, thresholdIndex, view);
-            resetParticle(&tmp, path, pathIndex, randomState, randomIncrement, x);
+            addPath(&tmp, path, count, threshold, thresholdCount, pathIndex, thresholdIndex, view);
+            mutateParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view);
         }
 
         if (tmp.iterCount >= maxLength) {
-            resetParticle(&tmp, path, pathIndex, randomState, randomIncrement, x);
+            mutateParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view);
         }
     }
 
@@ -343,9 +389,9 @@ __kernel void findMax2(global unsigned int *maxima, global unsigned int *maximum
  */
 
 __constant float COLOR_SCHEME[4][3] = {
-    {0.3, 0.0, 0.5,},
-    {0.0, 0.5, 0.3,},
-    {0.6, 0.5, 0.0,},
+    {0.1, 0.0, 0.2,},
+    {0.0, 0.5, 0.6,},
+    {0.8, 0.5, 0.0,},
     {0.1, 0.0, 0.2,},
 };
 
