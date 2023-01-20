@@ -12,6 +12,7 @@
 
 int windowIdFW;
 uint32_t *pixelsFW;
+Particle *particles;
 
 WindowSettings settingsFW;
 MouseState mouseFW;
@@ -85,6 +86,24 @@ void displayFW() {
 
     glDisable (GL_TEXTURE_2D);
 
+    glPointSize(2);
+    glColor3f(1, 1, 1);
+    glEnable(GL_POINT_SMOOTH);
+    
+    glBegin(GL_POINTS);
+
+    opencl->readBuffer("particles", particles);
+    for (int i = 0; i < config->particle_count; i++) {
+        Particle particle = particles[i];
+        PixelCoordinate coord = ((FractalCoordinate){particle.offset.s[0], particle.offset.s[1]}).toPixel(viewFW);
+        glVertex2f(
+            2 * coord.x / (float)viewFW.sizeX - 1,
+            2 * coord.y / (float)viewFW.sizeY - 1 
+        );
+    }
+
+    glEnd();
+
     glPopMatrix();
 
     if (settingsFW.grid) {
@@ -118,6 +137,7 @@ void updateView(float scale, float centerX, float centerY, float theta) {
     opencl->setKernelArg("mandelStep", 7, sizeof(ViewSettings), (void*)&viewFW);
 
     opencl->step("resetCount");
+    opencl->step("initParticles");
 }
 
 void selectRegion() {
@@ -229,6 +249,7 @@ void createFractalWindow(char *name, uint32_t width, uint32_t height) {
     windowIdFW = glutCreateWindow(name);
 
     pixelsFW = (uint32_t *)malloc(3 * width * height * sizeof(uint32_t));
+    particles = (Particle *)malloc(config->particle_count * sizeof(Particle));
 
     for (int i = 0; i < 3 * width * height; i++) {
         pixelsFW[i] = 0;

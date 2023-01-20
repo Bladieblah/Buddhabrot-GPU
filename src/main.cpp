@@ -23,12 +23,6 @@ unsigned int maximaKernelSize;
 chrono::high_resolution_clock::time_point frameTime;
 unsigned int frameCount = 0;
 
-typedef struct Particle {
-    cl_float2 pos;
-    cl_float2 offset;
-    uint32_t iter_count;
-} Particle;
-
 typedef struct FractalCoord {
     cl_float2 pos;
 } FractalCoord;
@@ -179,8 +173,8 @@ void display() {
     chrono::high_resolution_clock::time_point temp = chrono::high_resolution_clock::now();
     chrono::duration<float> time_span = chrono::duration_cast<chrono::duration<float>>(temp - frameTime);
     fprintf(stderr, "Step = %d, time = %.4g            \n", frameCount / 2, time_span.count());
-    fprintf(stderr, "\x1b[6A");
-    frameTime = temp;
+    fprintf(stderr, "\x1b[5A");
+    frameTime = temp; 
 }
 
 void cleanAll() {

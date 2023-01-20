@@ -129,7 +129,7 @@ inline float gaussianRand(
  }
 
  inline float cnorm(float2 z) {
-    return z.x * z.x + z.y + z.y;
+    return z.x * z.x + z.y * z.y;
  }
 
  inline float cdot(float2 a, float2 b) {
@@ -244,6 +244,23 @@ inline void addPath(
     particle->score = pown(particle->score, 2);
 }
 
+inline bool isValid(float2 coord) {
+    float c2 = cnorm(coord);
+    float a = coord.x;
+    
+    // Main bulb
+    if (256.0 * c2 * c2 - 96.0 * c2 + 32.0 * a < 3.0) {
+        return false;
+    }
+
+    // Head
+    if (16.0 * (c2 + 2.0 * a + 1.0) < 1.0) {
+        return false;
+    }
+
+    return true;
+}
+
 inline void resetParticle(
     Particle *particle,
     global float2 *path,
@@ -252,10 +269,17 @@ inline void resetParticle(
     global ulong *randomIncrement,
     int x
 ) {
-    float2 newOffset = (float2)(
-        (9. * uniformRand(randomState, randomIncrement, x) - 5.2),
-        (6. * uniformRand(randomState, randomIncrement, x) - 3.)
-    );
+    float2 newOffset;
+    for (int i = 0; i < 50; i++) {
+        newOffset = (float2)(
+            (9. * uniformRand(randomState, randomIncrement, x) - 5.2),
+            (6. * uniformRand(randomState, randomIncrement, x) - 3.)
+        );
+
+        if (isValid(newOffset)) {
+            break;
+        }
+    }
 
     particle->iterCount = 1;
     particle->pos = newOffset;
@@ -342,20 +366,20 @@ inline void mutateParticle(
     ViewSettings view
 ) {
     float2 newOffset;
-    if (particle->prevScore == 0 && particle->score == 0) {
-        newOffset = convergeParticle(particle, path, pathStart, randomState, randomIncrement, x, view);
-        particle->prevScore = particle->score;
-        particle->prevOffset = particle->offset;
-    } else {
-        if (particle->score > particle->prevScore || particle->score / particle->prevScore > uniformRand(randomState, randomIncrement, x)) {
-            particle->prevScore = particle->score;
-            particle->prevOffset = particle->offset;
-        }
-        newOffset = (float2)(
-            particle->prevOffset.x + 0.05 * view.scaleY * gaussianRand(randomState, randomIncrement, x),
-            particle->prevOffset.y + 0.05 * view.scaleY * gaussianRand(randomState, randomIncrement, x)
-        );
-    }
+    // if (particle->prevScore == 0 && particle->score == 0) {
+    //     newOffset = convergeParticle(particle, path, pathStart, randomState, randomIncrement, x, view);
+    //     particle->prevScore = particle->score;
+    //     particle->prevOffset = particle->offset;
+    // } else {
+    //     if (particle->score > particle->prevScore || particle->score / particle->prevScore > uniformRand(randomState, randomIncrement, x)) {
+    //     }
+    // }
+    particle->prevScore = particle->score;
+    particle->prevOffset = particle->offset;
+    newOffset = (float2)(
+        particle->prevOffset.x + 0.05 * view.scaleY * gaussianRand(randomState, randomIncrement, x),
+        particle->prevOffset.y + 0.05 * view.scaleY * gaussianRand(randomState, randomIncrement, x)
+    );
 
     particle->pos = newOffset;
     particle->offset = newOffset;
@@ -396,7 +420,7 @@ __kernel void mandelStep(
 
     Particle tmp = particles[x];
 
-    for (int i = 0; i < 800; i++) {
+    for (int i = 0; i < 50; i++) {
         tmp.pos = csquare(tmp.pos) + tmp.offset;
         path[pathIndex + tmp.iterCount] = tmp.pos;
         tmp.iterCount++;
@@ -421,10 +445,11 @@ __kernel void mandelStep(
             int thresholdIndex = matchThreshold(tmp, threshold, thresholdCount);
             addPath(&tmp, path, count, threshold, thresholdCount, pathIndex, thresholdIndex, view);
             mutateParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view);
+            // resetParticle(&tmp, path, pathIndex, randomState, randomIncrement, x);
         }
 
-        if (tmp.iterCount >= maxLength) {
-            mutateParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view);
+        if (tmp.iterCount >= maxLength || tmp.iterCount < 5) {
+            resetParticle(&tmp, path, pathIndex, randomState, randomIncrement, x);
         }
     }
 

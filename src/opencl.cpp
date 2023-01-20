@@ -186,7 +186,7 @@ void OpenCl::step(string name, int count) {
 }
 
 void OpenCl::readBuffer(string name, void *pointer) {
-    startTimer();
+    // startTimer();
 
     ret = clEnqueueReadBuffer(
         command_queue,
@@ -198,19 +198,19 @@ void OpenCl::readBuffer(string name, void *pointer) {
         0, NULL, NULL
     );
 
-    getTime();
-    fprintf(stderr, "Buffer %s ", name.c_str());
-    for (int i = strlen(name.c_str()); i < 13; i++) {
-        fprintf(stderr, " ");
-    }
+    // getTime();
+    // fprintf(stderr, "Buffer %s ", name.c_str());
+    // for (int i = strlen(name.c_str()); i < 13; i++) {
+    //     fprintf(stderr, " ");
+    // }
 
-    fprintf(stderr, "Chrono = %09.1fμs", chronoTime);
+    // fprintf(stderr, "Chrono = %09.1fμs", chronoTime);
     
-    if (profile) {
-        fprintf(stderr, "OpenCL = %09.1fμs", clTime);
-    }
+    // if (profile) {
+    //     fprintf(stderr, "OpenCL = %09.1fμs", clTime);
+    // }
 
-    fprintf(stderr, "\n");
+    // fprintf(stderr, "\n");
 }
 
 void OpenCl::cleanup() {

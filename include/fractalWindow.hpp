@@ -1,7 +1,14 @@
 #ifndef RENDER_WINDOW_H
 #define RENDER_WINDOW_H
 
+#include "config.hpp"
 #include "opencl.hpp"
+
+typedef struct Particle {
+    cl_float2 pos;
+    cl_float2 offset;
+    uint32_t iter_count;
+} Particle;
 
 typedef struct WindowSettings {
     uint32_t width, height;
@@ -31,5 +38,6 @@ void destroyFractalWindow();
 extern ViewSettings viewFW;
 extern uint32_t *pixelsFW;
 extern OpenCl *opencl;
+extern Config *config;
 
 #endif
