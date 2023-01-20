@@ -132,6 +132,10 @@ inline float gaussianRand(
     return z.x * z.x + z.y + z.y;
  }
 
+ inline float cdot(float2 a, float2 b) {
+    return a.x * b.x + a.y * b.y;
+ }
+
 /**
  * Coordinate transformations
  */
@@ -263,6 +267,71 @@ inline void resetParticle(
     path[pathStart] = newOffset;
 }
 
+inline float2 project(float2 v, float2 u1, float2 u2) {
+    float u11 = cnorm(u1);
+    float u22 = cnorm(u2);
+    float u12 = cdot(u1, u2);
+
+    float idet = u11 * u22 - pown(u12, 2);
+
+    float a1 = cdot(v, u1);
+    float a2 = cdot(v, u2);
+
+    return (float2) {
+        idet * (a1 * u22 - a2 * u12),
+        idet * (a2 * u11 - a1 * u12)
+    };
+}
+
+constant int MAX_CONVERGE_STEPS = 100;
+constant float MAX_CONVERGE_STEP_SIZE =  0.5;
+
+inline float2 convergeParticle(
+    Particle *particle,
+    global float2 *path,
+    unsigned int pathStart,
+    global ulong *randomState,
+    global ulong *randomIncrement,
+    int x,
+    ViewSettings view
+) {
+    float2 z;
+    float2 dzx = {1., 0};
+    float2 dzy = {0, 1.};
+
+    float dist = 100;
+    float2 dzxOpt = dzx;
+    float2 dzyOpt = dzy;
+    int iOpt = 0;
+
+    z = path[pathStart];
+    dzx = (float)2. * cmul(z, dzx); dzx.x += 1;
+    dzy = (float)2. * cmul(z, dzy); dzy.y += 1;
+
+    int imax = min(MAX_CONVERGE_STEPS, (int)particle->iterCount);
+    float2 target = (float2){view.centerX, view.centerY};
+
+    for (int i = 1; i < imax; i++) {
+        z = path[pathStart + i];
+        dzx = (float)2. * cmul(z, dzx); dzx.x += 1;
+        dzy = (float)2. * cmul(z, dzy); dzy.y += 1;
+        
+        float testDist = cnorm(target - z);
+
+        if (testDist < dist) {
+            dist = testDist;
+            dzxOpt = dzx;
+            dzyOpt = dzy;
+            iOpt = i;
+        }
+    }
+
+    float2 diff = target - path[pathStart + iOpt];
+    float2 step = project(diff, dzxOpt, dzyOpt);
+
+    return particle->offset + (float)0.5 * step;
+}
+
 inline void mutateParticle(
     Particle *particle,
     global float2 *path,
@@ -272,21 +341,25 @@ inline void mutateParticle(
     int x,
     ViewSettings view
 ) {
+    float2 newOffset;
     if (particle->prevScore == 0 && particle->score == 0) {
-        resetParticle(particle, path, pathStart, randomState, randomIncrement, x);
-    } else if (particle->score > particle->prevScore || particle->score / particle->prevScore > uniformRand(randomState, randomIncrement, x)) {
+        newOffset = convergeParticle(particle, path, pathStart, randomState, randomIncrement, x, view);
         particle->prevScore = particle->score;
         particle->prevOffset = particle->offset;
+    } else {
+        if (particle->score > particle->prevScore || particle->score / particle->prevScore > uniformRand(randomState, randomIncrement, x)) {
+            particle->prevScore = particle->score;
+            particle->prevOffset = particle->offset;
+        }
+        newOffset = (float2)(
+            particle->prevOffset.x + 0.05 * view.scaleY * gaussianRand(randomState, randomIncrement, x),
+            particle->prevOffset.y + 0.05 * view.scaleY * gaussianRand(randomState, randomIncrement, x)
+        );
     }
 
-    float2 newOffset = (float2)(
-        particle->prevOffset.x + 0.05 * view.scaleY * gaussianRand(randomState, randomIncrement, x),
-        particle->prevOffset.y + 0.05 * view.scaleY * gaussianRand(randomState, randomIncrement, x)
-    );
-
-    particle->iterCount = 1;
     particle->pos = newOffset;
     particle->offset = newOffset;
+    particle->iterCount = 1;
     particle->score = 0;
 
     path[pathStart] = newOffset;

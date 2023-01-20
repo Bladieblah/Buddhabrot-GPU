@@ -118,7 +118,6 @@ void updateView(float scale, float centerX, float centerY, float theta) {
     opencl->setKernelArg("mandelStep", 7, sizeof(ViewSettings), (void*)&viewFW);
 
     opencl->step("resetCount");
-    opencl->step("initParticles");
 }
 
 void selectRegion() {
@@ -173,6 +172,7 @@ void keyPressedFW(unsigned char key, int x, int y) {
             break;
         case 'R':
             opencl->step("resetCount");
+            opencl->step("initParticles");
             break;
         default:
             break;
