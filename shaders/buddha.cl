@@ -244,6 +244,9 @@ inline void addPath(
     particle->score = pown(particle->score, 2);
 }
 
+constant float2 CENTER_1 = {-0.1225611668766536, 0.7448617666197446};
+constant float RADIUS_1 = 0.09622504;
+
 inline bool isValid(float2 coord) {
     float c2 = cnorm(coord);
     float a = coord.x;
@@ -255,6 +258,11 @@ inline bool isValid(float2 coord) {
 
     // Head
     if (16.0 * (c2 + 2.0 * a + 1.0) < 1.0) {
+        return false;
+    }
+
+    coord.y = fabs(coord.y);
+    if (sqrt(cnorm(coord - CENTER_1)) < RADIUS_1) {
         return false;
     }
 
