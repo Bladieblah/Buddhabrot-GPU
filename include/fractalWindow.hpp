@@ -6,8 +6,9 @@
 
 typedef struct Particle {
     cl_float2 pos;
-    cl_float2 offset;
-    uint32_t iter_count;
+    cl_float2 offset, prevOffset;
+    unsigned int iterCount;
+    float score, prevScore;
 } Particle;
 
 typedef struct WindowSettings {
@@ -15,7 +16,7 @@ typedef struct WindowSettings {
     uint32_t windowW, windowH;
     float zoom = 1, centerX = 0, centerY = 0;
     bool grid = false;
-    bool showParticles = false;
+    bool showParticles = true;
 } WindowSettings;
 
 typedef struct MouseState {

@@ -46,26 +46,26 @@ __constant float d[] = {
     3.754408661907416e+00
 };
 
-inline float inverseNormalCdf(float uniform) {
+inline float inverseNormalCdf(float u) {
 	float q, r;
 
-	if (uniform <= 0) {
+	if (u <= 0) {
 		return -HUGE_VAL;
 	}
-	else if (uniform < UNIFORM_LOW) {
-		q = sqrt(-2 * log(uniform));
+	else if (u < UNIFORM_LOW) {
+		q = sqrt(-2 * log(u));
 		return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) /
 			((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1);
 	}
-	else if (uniform <= UNIFORM_HIGH) {
-        q = uniform - 0.5;
+	else if (u <= UNIFORM_HIGH) {
+        q = u - 0.5;
         r = q * q;
         
         return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q /
             (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1);
 	}
-	else if (uniform < 1) {
-		q  = sqrt(-2 * log(1 - uniform));
+	else if (u < 1) {
+		q  = sqrt(-2 * log(1 - u));
 
 		return -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) /
 			((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1);
@@ -223,14 +223,14 @@ inline void addPath(
     ViewSettings view
 ) {
     unsigned int pixelCount = view.sizeX * view.sizeY;
-    float deltaScore = 1. / (float)particle->iterCount;
+    // float deltaScore = 1. / (float)particle->iterCount;
     
     for (unsigned int i = 0; i < particle->iterCount; i++) {
         int2 pixel = fractalToPixel(path[pathStart + i], view);
 
         if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) {
             atomic_inc(&count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]);
-            particle->score += deltaScore;
+            particle->score += 1;
         }
 
         path[pathStart + i].y = -path[pathStart + i].y;
@@ -238,6 +238,7 @@ inline void addPath(
 
         if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) {
             atomic_inc(&count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]);
+            particle->score += 1;
         }
     }
 
@@ -321,7 +322,7 @@ inline void resetParticle(
     particle->offset = newOffset;
     particle->prevOffset = newOffset;
     particle->score = 0;
-    particle->prevScore = 0;
+    particle->prevScore = -1;
 
     path[pathStart] = newOffset;
 }
@@ -345,7 +346,7 @@ inline float2 project(float2 v, float2 u1, float2 u2) {
 constant int MAX_CONVERGE_STEPS = 100;
 constant float MAX_CONVERGE_STEP_SIZE =  0.5;
 
-inline float2 convergeParticle(
+inline bool convergeParticle(
     Particle *particle,
     global float2 *path,
     unsigned int pathStart,
@@ -385,10 +386,22 @@ inline float2 convergeParticle(
         }
     }
 
+
     float2 diff = target - path[pathStart + iOpt];
     float2 step = project(diff, dzxOpt, dzyOpt);
+    float2 newOffset = particle->offset + (float)0.5 * step;
 
-    return particle->offset + (float)0.5 * step;
+    particle->prevScore = particle->score;
+    particle->prevOffset = particle->offset;
+
+    particle->pos = newOffset;
+    particle->offset = newOffset;
+    particle->iterCount = 1;
+    particle->score = 0;
+
+    path[pathStart] = newOffset;
+
+    return dist < view.scaleY;
 }
 
 inline void mutateParticle(
@@ -401,20 +414,14 @@ inline void mutateParticle(
     ViewSettings view
 ) {
     float2 newOffset;
-    if (particle->prevScore == 0 && particle->score == 0) {
-        newOffset = convergeParticle(particle, path, pathStart, randomState, randomIncrement, x, view);
+    if (particle->score > particle->prevScore || particle->score / particle->prevScore > uniformRand(randomState, randomIncrement, x)) {
         particle->prevScore = particle->score;
         particle->prevOffset = particle->offset;
-    } else {
-        if (particle->score > particle->prevScore || particle->score / particle->prevScore > uniformRand(randomState, randomIncrement, x)) {
-            particle->prevScore = particle->score;
-            particle->prevOffset = particle->offset;
-        }
-        newOffset = (float2)(
-            particle->prevOffset.x + 0.05 * view.scaleY * gaussianRand(randomState, randomIncrement, x),
-            particle->prevOffset.y + 0.05 * view.scaleY * gaussianRand(randomState, randomIncrement, x)
-        );
     }
+    newOffset = (float2)(
+        particle->prevOffset.x + 0.01 * view.scaleY * gaussianRand(randomState, randomIncrement, x),
+        particle->prevOffset.y + 0.01 * view.scaleY * gaussianRand(randomState, randomIncrement, x)
+    );
 
     particle->pos = newOffset;
     particle->offset = newOffset;
@@ -476,6 +483,13 @@ __kernel void mandelStep(
         path[pathIndex + tmp.iterCount] = tmp.pos;
         tmp.iterCount++;
 
+        if (tmp.prevScore == 0 && tmp.iterCount > 100) {
+            if (convergeParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view)) {
+                tmp.prevScore = 1;
+            }
+            continue;
+        }
+
         if (fabs(tmp.pos.x) > 4 || fabs(tmp.pos.y) > 4 || cnorm(tmp.pos) > 16) {
             int thresholdIndex = matchThreshold(tmp, threshold, thresholdCount);
             addPath(&tmp, path, count, threshold, thresholdCount, pathIndex, thresholdIndex, view);
@@ -484,8 +498,11 @@ __kernel void mandelStep(
         }
 
         if (tmp.iterCount >= maxLength || tmp.iterCount < 5) {
-            mutateParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view);
-            // resetParticle(&tmp, path, pathIndex, randomState, randomIncrement, x);
+            if (tmp.prevScore == -1) {
+                resetParticle(&tmp, path, pathIndex, randomState, randomIncrement, x);
+            } else {
+                mutateParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view);
+            }
         }
     }
 
