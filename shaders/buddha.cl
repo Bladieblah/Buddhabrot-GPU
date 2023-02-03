@@ -245,7 +245,16 @@ inline void addPath(
 }
 
 constant float2 CENTER_1 = {-0.1225611668766536, 0.7448617666197446};
-constant float RADIUS_1 = 0.09622504;
+constant float RADIUS_1 = 0.095;
+
+constant float2 CENTER_2 = {-1.3107026413368228, 0};
+constant float2 CENTER_3 = {0.282271390766914, 0.5300606175785252};
+constant float RADIUS_3 = 0.044;
+
+constant float2 CENTER_4 = {-0.5043401754462431, 0.5627657614529813};
+constant float RADIUS_4 = 0.037;
+constant float2 CENTER_5 = {0.3795135880159236, 0.3349323055974974};
+constant float RADIUS_5 = 0.0225;
 
 inline bool isValid(float2 coord) {
     float c2 = cnorm(coord);
@@ -262,7 +271,25 @@ inline bool isValid(float2 coord) {
     }
 
     coord.y = fabs(coord.y);
+    
+    // 2-step bulbs
     if (sqrt(cnorm(coord - CENTER_1)) < RADIUS_1) {
+        return false;
+    }
+
+    // 3-step bulbs
+    if (sqrt(cnorm(coord - CENTER_2)) < RADIUS_3) {
+        return false;
+    }
+    if (sqrt(cnorm(coord - CENTER_3)) < RADIUS_3) {
+        return false;
+    }
+
+    // 4-step bulbs
+    if (sqrt(cnorm(coord - CENTER_4)) < RADIUS_4) {
+        return false;
+    }
+    if (sqrt(cnorm(coord - CENTER_5)) < RADIUS_5) {
         return false;
     }
 

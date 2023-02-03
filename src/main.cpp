@@ -152,6 +152,8 @@ void prepare() {
         (int)config->width, (int)config->height
     };
 
+    defaultView = viewFW;
+
     prepareOpenCl();
 }
 

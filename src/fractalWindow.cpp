@@ -16,7 +16,20 @@ Particle *particles;
 
 WindowSettings settingsFW;
 MouseState mouseFW;
-ViewSettings viewFW;
+ViewSettings viewFW, defaultView;
+
+void showParticles() {
+    opencl->readBuffer("particles", particles);
+
+    for (int i = 0; i < config->particle_count; i++) {
+        Particle particle = particles[i];
+        PixelCoordinate coord = ((FractalCoordinate){particle.offset.s[0], particle.offset.s[1]}).toPixel(defaultView);
+        glVertex2f(
+            2 * coord.x / (float)viewFW.sizeX - 1,
+            2 * coord.y / (float)viewFW.sizeY - 1 
+        );
+    }
+}
 
 void drawGrid() {
     glBegin(GL_LINES);
@@ -92,14 +105,8 @@ void displayFW() {
     
     glBegin(GL_POINTS);
 
-    opencl->readBuffer("particles", particles);
-    for (int i = 0; i < config->particle_count; i++) {
-        Particle particle = particles[i];
-        PixelCoordinate coord = ((FractalCoordinate){particle.offset.s[0], particle.offset.s[1]}).toPixel(viewFW);
-        glVertex2f(
-            2 * coord.x / (float)viewFW.sizeX - 1,
-            2 * coord.y / (float)viewFW.sizeY - 1 
-        );
+    if (settingsFW.showParticles) {
+        showParticles();
     }
 
     glEnd();
@@ -185,6 +192,9 @@ void keyPressedFW(unsigned char key, int x, int y) {
             break;
         case 's':
             settingsFW.zoom /= 1.5;
+            break;
+        case 'p':
+            settingsFW.showParticles = !settingsFW.showParticles;
             break;
 
         case 'q':
