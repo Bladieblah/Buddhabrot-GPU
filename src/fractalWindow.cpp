@@ -39,10 +39,6 @@ void showParticles() {
             2 * coord.x / (float)viewFW.sizeX - 1,
             2 * coord.y / (float)viewFW.sizeY - 1
         );
-
-        if (i < 10) {
-            fprintf(stderr, "(%f, %f) %f\n", particle.prevOffset.s[0], particle.prevOffset.s[1], particle.prevScore);
-        }
     }
 }
 

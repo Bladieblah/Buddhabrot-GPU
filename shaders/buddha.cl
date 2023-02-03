@@ -340,7 +340,7 @@ inline float2 project(float2 v, float2 u1, float2 u2) {
     float u22 = cnorm2(u2);
     float u12 = cdot(u1, u2);
 
-    float idet = u11 * u22 - pown(u12, 2);
+    float idet = 1. / (u11 * u22 - pown(u12, 2));
 
     float a1 = cdot(v, u1);
     float a2 = cdot(v, u2);
@@ -364,25 +364,21 @@ inline bool convergeParticle(
     ViewSettings view
 ) {
     float2 z;
-    float2 dzx = {1., 0};
-    float2 dzy = {0, 1.};
+    float2 dzx = {1., 0.};
+    float2 dzy = {0., 1.};
 
     float dist = 100;
     float2 dzxOpt = dzx;
     float2 dzyOpt = dzy;
     int iOpt = 0;
 
-    z = path[pathStart];
-    dzx = (float)2. * cmul(z, dzx); dzx.x += 1;
-    dzy = (float)2. * cmul(z, dzy); dzy.y += 1;
-
     int imax = min(MAX_CONVERGE_STEPS, (int)particle->iterCount);
     float2 target = (float2){view.centerX, view.centerY};
 
     for (int i = 1; i < imax; i++) {
+        dzx = (float)2. * cmul(z, dzx) + (float2){1., 0.};
+        dzy = (float)2. * cmul(z, dzy) + (float2){0., 1.};
         z = path[pathStart + i];
-        dzx = (float)2. * cmul(z, dzx); dzx.x += 1;
-        dzy = (float)2. * cmul(z, dzy); dzy.y += 1;
         
         float testDist = cnorm2(target - z);
 
@@ -399,19 +395,19 @@ inline bool convergeParticle(
     float2 step = project(diff, dzxOpt, dzyOpt);
     float stepSize = cnorm(step);
 
-    if (stepSize > 0.05) {
-        step = step / stepSize * 0.05;
+    if (stepSize > 0.01) {
+        step = step / stepSize * 0.01;
     }
 
     float2 newOffset = particle->offset + (float)0.5 * step;
 
-    particle->prevScore = particle->score;
+    // particle->prevScore = particle->score;
     particle->prevOffset = particle->offset;
 
     particle->pos = newOffset;
     particle->offset = newOffset;
     particle->iterCount = 1;
-    particle->score = 0;
+    // particle->score = 0;
 
     path[pathStart] = newOffset;
 
@@ -476,60 +472,61 @@ __kernel void mandelStep(
 
     Particle tmp = particles[x];
 
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 1; i++) {
         tmp.pos = csquare(tmp.pos) + tmp.offset;
         path[pathIndex + tmp.iterCount] = tmp.pos;
         tmp.iterCount++;
 
-        tmp.pos = csquare(tmp.pos) + tmp.offset;
-        path[pathIndex + tmp.iterCount] = tmp.pos;
-        tmp.iterCount++;
+        // tmp.pos = csquare(tmp.pos) + tmp.offset;
+        // path[pathIndex + tmp.iterCount] = tmp.pos;
+        // tmp.iterCount++;
 
-        tmp.pos = csquare(tmp.pos) + tmp.offset;
-        path[pathIndex + tmp.iterCount] = tmp.pos;
-        tmp.iterCount++;
+        // tmp.pos = csquare(tmp.pos) + tmp.offset;
+        // path[pathIndex + tmp.iterCount] = tmp.pos;
+        // tmp.iterCount++;
 
-        tmp.pos = csquare(tmp.pos) + tmp.offset;
-        path[pathIndex + tmp.iterCount] = tmp.pos;
-        tmp.iterCount++;
+        // tmp.pos = csquare(tmp.pos) + tmp.offset;
+        // path[pathIndex + tmp.iterCount] = tmp.pos;
+        // tmp.iterCount++;
 
-        tmp.pos = csquare(tmp.pos) + tmp.offset;
-        path[pathIndex + tmp.iterCount] = tmp.pos;
-        tmp.iterCount++;
+        // tmp.pos = csquare(tmp.pos) + tmp.offset;
+        // path[pathIndex + tmp.iterCount] = tmp.pos;
+        // tmp.iterCount++;
 
-        if (tmp.prevScore == 0 && tmp.iterCount > 100) {
-            if (convergeParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view)) {
-                tmp.prevScore = 1;
-            }
-            continue;
+        if (tmp.iterCount > 100 || cnorm2(tmp.pos) > 16) {
+            convergeParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view);
         }
 
-        if (fabs(tmp.pos.x) > 4 || fabs(tmp.pos.y) > 4 || cnorm2(tmp.pos) > 16) {
-            int thresholdIndex = matchThreshold(tmp, threshold, thresholdCount);
-            addPath(&tmp, path, count, threshold, thresholdCount, pathIndex, thresholdIndex, view);
+        // if (tmp.prevScore == -1 && tmp.iterCount > 100) {
+        //     if (convergeParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view)) {
+        //         tmp.prevScore = 0;
+        //     }
+        //     continue;
+        // }
+
+        // if (fabs(tmp.pos.x) > 4 || fabs(tmp.pos.y) > 4 || cnorm2(tmp.pos) > 16) {
+        //     int thresholdIndex = matchThreshold(tmp, threshold, thresholdCount);
+        //     addPath(&tmp, path, count, threshold, thresholdCount, pathIndex, thresholdIndex, view);
             
-            if (tmp.prevScore < 1) {
-                tmp.prevScore = 0;
-                
-                if (tmp.prevScore == 0) {
-                    if (convergeParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view)) {
-                        tmp.prevScore = 1;
-                    }
-                    continue;
-                }
-            }
+        //     if (tmp.prevScore < 0 && tmp.score > 0) {
+        //         tmp.prevOffset = tmp.offset;
+        //         tmp.prevScore = tmp.score;
+        //     }
 
-            mutateParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view);
-            // resetParticle(&tmp, path, pathIndex, randomState, randomIncrement, x);
-        }
+        //     if (tmp.prevScore > 5){
+        //         mutateParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view);
+        //     } else {
+        //         convergeParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view);
+        //     }
+        // }
 
-        if (tmp.iterCount >= maxLength) {
-            if (tmp.prevScore == -1) {
-                resetParticle(&tmp, path, pathIndex, randomState, randomIncrement, x);
-            } else {
-                mutateParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view);
-            }
-        }
+        // if (tmp.iterCount >= maxLength) {
+        //     if (tmp.prevScore == -1) {
+        //         resetParticle(&tmp, path, pathIndex, randomState, randomIncrement, x);
+        //     } else {
+        //         mutateParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view);
+        //     }
+        // }
     }
 
     particles[x] = tmp;
