@@ -271,7 +271,7 @@ inline bool isValid(float2 coord) {
     }
 
     coord.y = fabs(coord.y);
-    
+
     // 2-step bulbs
     if (sqrt(cnorm(coord - CENTER_1)) < RADIUS_1) {
         return false;
@@ -401,20 +401,20 @@ inline void mutateParticle(
     ViewSettings view
 ) {
     float2 newOffset;
-    // if (particle->prevScore == 0 && particle->score == 0) {
-    //     newOffset = convergeParticle(particle, path, pathStart, randomState, randomIncrement, x, view);
-    //     particle->prevScore = particle->score;
-    //     particle->prevOffset = particle->offset;
-    // } else {
-    //     if (particle->score > particle->prevScore || particle->score / particle->prevScore > uniformRand(randomState, randomIncrement, x)) {
-    //     }
-    // }
-    particle->prevScore = particle->score;
-    particle->prevOffset = particle->offset;
-    newOffset = (float2)(
-        particle->prevOffset.x + 0.05 * view.scaleY * gaussianRand(randomState, randomIncrement, x),
-        particle->prevOffset.y + 0.05 * view.scaleY * gaussianRand(randomState, randomIncrement, x)
-    );
+    if (particle->prevScore == 0 && particle->score == 0) {
+        newOffset = convergeParticle(particle, path, pathStart, randomState, randomIncrement, x, view);
+        particle->prevScore = particle->score;
+        particle->prevOffset = particle->offset;
+    } else {
+        if (particle->score > particle->prevScore || particle->score / particle->prevScore > uniformRand(randomState, randomIncrement, x)) {
+            particle->prevScore = particle->score;
+            particle->prevOffset = particle->offset;
+        }
+        newOffset = (float2)(
+            particle->prevOffset.x + 0.05 * view.scaleY * gaussianRand(randomState, randomIncrement, x),
+            particle->prevOffset.y + 0.05 * view.scaleY * gaussianRand(randomState, randomIncrement, x)
+        );
+    }
 
     particle->pos = newOffset;
     particle->offset = newOffset;
@@ -484,7 +484,8 @@ __kernel void mandelStep(
         }
 
         if (tmp.iterCount >= maxLength || tmp.iterCount < 5) {
-            resetParticle(&tmp, path, pathIndex, randomState, randomIncrement, x);
+            mutateParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view);
+            // resetParticle(&tmp, path, pathIndex, randomState, randomIncrement, x);
         }
     }
 
