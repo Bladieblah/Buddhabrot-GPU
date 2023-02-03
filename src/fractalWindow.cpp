@@ -199,7 +199,7 @@ void keyPressedFW(unsigned char key, int x, int y) {
             settingsFW.centerY = 0.;
             break;
         case 'z':
-            updateView(1, -0.5, 0, 0);
+            updateView(1.3, -0.5, 0, 0);
             break;
 
         case 'w':

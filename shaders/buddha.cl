@@ -264,6 +264,10 @@ constant float RADIUS_5 = 0.0225;
 inline bool isValid(float2 coord) {
     float c2 = cnorm2(coord);
     float a = coord.x;
+
+    if (c2 >= 4) {
+        return false;
+    }
     
     // Main bulb
     if (256.0 * c2 * c2 - 96.0 * c2 + 32.0 * a < 3.0) {
@@ -472,26 +476,26 @@ __kernel void mandelStep(
 
     Particle tmp = particles[x];
 
-    for (int i = 0; i < 1; i++) {
+    for (int i = 0; i < 100; i++) {
         tmp.pos = csquare(tmp.pos) + tmp.offset;
         path[pathIndex + tmp.iterCount] = tmp.pos;
         tmp.iterCount++;
 
-        // tmp.pos = csquare(tmp.pos) + tmp.offset;
-        // path[pathIndex + tmp.iterCount] = tmp.pos;
-        // tmp.iterCount++;
+        tmp.pos = csquare(tmp.pos) + tmp.offset;
+        path[pathIndex + tmp.iterCount] = tmp.pos;
+        tmp.iterCount++;
 
-        // tmp.pos = csquare(tmp.pos) + tmp.offset;
-        // path[pathIndex + tmp.iterCount] = tmp.pos;
-        // tmp.iterCount++;
+        tmp.pos = csquare(tmp.pos) + tmp.offset;
+        path[pathIndex + tmp.iterCount] = tmp.pos;
+        tmp.iterCount++;
 
-        // tmp.pos = csquare(tmp.pos) + tmp.offset;
-        // path[pathIndex + tmp.iterCount] = tmp.pos;
-        // tmp.iterCount++;
+        tmp.pos = csquare(tmp.pos) + tmp.offset;
+        path[pathIndex + tmp.iterCount] = tmp.pos;
+        tmp.iterCount++;
 
-        // tmp.pos = csquare(tmp.pos) + tmp.offset;
-        // path[pathIndex + tmp.iterCount] = tmp.pos;
-        // tmp.iterCount++;
+        tmp.pos = csquare(tmp.pos) + tmp.offset;
+        path[pathIndex + tmp.iterCount] = tmp.pos;
+        tmp.iterCount++;
 
         if (tmp.prevScore == 0 && tmp.iterCount > 100) {
             if (convergeParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view)) {
