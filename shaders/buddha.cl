@@ -128,8 +128,12 @@ inline float gaussianRand(
     return (float2)( z.x * z.x - z.y * z.y, 2 * z.y * z.x);
  }
 
- inline float cnorm(float2 z) {
+ inline float cnorm2(float2 z) {
     return z.x * z.x + z.y * z.y;
+ }
+
+ inline float cnorm(float2 z) {
+    return sqrt(cnorm2(z));
  }
 
  inline float cdot(float2 a, float2 b) {
@@ -258,7 +262,7 @@ constant float2 CENTER_5 = {0.3795135880159236, 0.3349323055974974};
 constant float RADIUS_5 = 0.0225;
 
 inline bool isValid(float2 coord) {
-    float c2 = cnorm(coord);
+    float c2 = cnorm2(coord);
     float a = coord.x;
     
     // Main bulb
@@ -274,23 +278,23 @@ inline bool isValid(float2 coord) {
     coord.y = fabs(coord.y);
 
     // 2-step bulbs
-    if (sqrt(cnorm(coord - CENTER_1)) < RADIUS_1) {
+    if (cnorm(coord - CENTER_1) < RADIUS_1) {
         return false;
     }
 
     // 3-step bulbs
-    if (sqrt(cnorm(coord - CENTER_2)) < RADIUS_3) {
+    if (cnorm2(coord - CENTER_2) < RADIUS_3) {
         return false;
     }
-    if (sqrt(cnorm(coord - CENTER_3)) < RADIUS_3) {
+    if (cnorm2(coord - CENTER_3) < RADIUS_3) {
         return false;
     }
 
     // 4-step bulbs
-    if (sqrt(cnorm(coord - CENTER_4)) < RADIUS_4) {
+    if (cnorm2(coord - CENTER_4) < RADIUS_4) {
         return false;
     }
-    if (sqrt(cnorm(coord - CENTER_5)) < RADIUS_5) {
+    if (cnorm2(coord - CENTER_5) < RADIUS_5) {
         return false;
     }
 
@@ -328,8 +332,8 @@ inline void resetParticle(
 }
 
 inline float2 project(float2 v, float2 u1, float2 u2) {
-    float u11 = cnorm(u1);
-    float u22 = cnorm(u2);
+    float u11 = cnorm2(u1);
+    float u22 = cnorm2(u2);
     float u12 = cdot(u1, u2);
 
     float idet = u11 * u22 - pown(u12, 2);
@@ -376,7 +380,7 @@ inline bool convergeParticle(
         dzx = (float)2. * cmul(z, dzx); dzx.x += 1;
         dzy = (float)2. * cmul(z, dzy); dzy.y += 1;
         
-        float testDist = cnorm(target - z);
+        float testDist = cnorm2(target - z);
 
         if (testDist < dist) {
             dist = testDist;
@@ -389,6 +393,12 @@ inline bool convergeParticle(
 
     float2 diff = target - path[pathStart + iOpt];
     float2 step = project(diff, dzxOpt, dzyOpt);
+    float stepSize = cnorm(step);
+
+    if (stepSize > 0.05) {
+        step = step / stepSize * 0.05;
+    }
+
     float2 newOffset = particle->offset + (float)0.5 * step;
 
     particle->prevScore = particle->score;
@@ -413,14 +423,14 @@ inline void mutateParticle(
     int x,
     ViewSettings view
 ) {
-    float2 newOffset;
     if (particle->score > particle->prevScore || particle->score / particle->prevScore > uniformRand(randomState, randomIncrement, x)) {
         particle->prevScore = particle->score;
         particle->prevOffset = particle->offset;
     }
-    newOffset = (float2)(
-        particle->prevOffset.x + 0.01 * view.scaleY * gaussianRand(randomState, randomIncrement, x),
-        particle->prevOffset.y + 0.01 * view.scaleY * gaussianRand(randomState, randomIncrement, x)
+
+    float2 newOffset = (float2)(
+        particle->prevOffset.x + 0.01 * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5., 5.),
+        particle->prevOffset.y + 0.01 * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5., 5.)
     );
 
     particle->pos = newOffset;
@@ -462,26 +472,26 @@ __kernel void mandelStep(
 
     Particle tmp = particles[x];
 
-    for (int i = 0; i < 50; i++) {
+    for (int i = 0; i < 1; i++) {
         tmp.pos = csquare(tmp.pos) + tmp.offset;
         path[pathIndex + tmp.iterCount] = tmp.pos;
         tmp.iterCount++;
 
-        tmp.pos = csquare(tmp.pos) + tmp.offset;
-        path[pathIndex + tmp.iterCount] = tmp.pos;
-        tmp.iterCount++;
+        // tmp.pos = csquare(tmp.pos) + tmp.offset;
+        // path[pathIndex + tmp.iterCount] = tmp.pos;
+        // tmp.iterCount++;
 
-        tmp.pos = csquare(tmp.pos) + tmp.offset;
-        path[pathIndex + tmp.iterCount] = tmp.pos;
-        tmp.iterCount++;
+        // tmp.pos = csquare(tmp.pos) + tmp.offset;
+        // path[pathIndex + tmp.iterCount] = tmp.pos;
+        // tmp.iterCount++;
 
-        tmp.pos = csquare(tmp.pos) + tmp.offset;
-        path[pathIndex + tmp.iterCount] = tmp.pos;
-        tmp.iterCount++;
+        // tmp.pos = csquare(tmp.pos) + tmp.offset;
+        // path[pathIndex + tmp.iterCount] = tmp.pos;
+        // tmp.iterCount++;
 
-        tmp.pos = csquare(tmp.pos) + tmp.offset;
-        path[pathIndex + tmp.iterCount] = tmp.pos;
-        tmp.iterCount++;
+        // tmp.pos = csquare(tmp.pos) + tmp.offset;
+        // path[pathIndex + tmp.iterCount] = tmp.pos;
+        // tmp.iterCount++;
 
         if (tmp.prevScore == 0 && tmp.iterCount > 100) {
             if (convergeParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view)) {
@@ -490,14 +500,26 @@ __kernel void mandelStep(
             continue;
         }
 
-        if (fabs(tmp.pos.x) > 4 || fabs(tmp.pos.y) > 4 || cnorm(tmp.pos) > 16) {
+        if (fabs(tmp.pos.x) > 4 || fabs(tmp.pos.y) > 4 || cnorm2(tmp.pos) > 16) {
             int thresholdIndex = matchThreshold(tmp, threshold, thresholdCount);
             addPath(&tmp, path, count, threshold, thresholdCount, pathIndex, thresholdIndex, view);
+            
+            if (tmp.prevScore < 1) {
+                tmp.prevScore = 0;
+                
+                if (tmp.prevScore == 0) {
+                    if (convergeParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view)) {
+                        tmp.prevScore = 1;
+                    }
+                    continue;
+                }
+            }
+
             mutateParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view);
             // resetParticle(&tmp, path, pathIndex, randomState, randomIncrement, x);
         }
 
-        if (tmp.iterCount >= maxLength || tmp.iterCount < 5) {
+        if (tmp.iterCount >= maxLength) {
             if (tmp.prevScore == -1) {
                 resetParticle(&tmp, path, pathIndex, randomState, randomIncrement, x);
             } else {
