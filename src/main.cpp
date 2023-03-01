@@ -167,6 +167,10 @@ void display() {
     }
     
     displayFW();
+    
+    // uint32_t m[config->threshold_count];
+    // opencl->readBuffer("maximum", m);
+    // fprintf(stderr, "maxs = (%d, %d, %d)\n", m[0], m[1], m[2]);
 
     opencl->step("mandelStep", config->frame_steps);
     opencl->step("findMax1");

@@ -359,7 +359,34 @@ inline float2 project(float2 v, float2 u1, float2 u2) {
 constant int MAX_CONVERGE_STEPS = 100;
 constant float MAX_CONVERGE_STEP_SIZE =  0.02;
 
-inline bool convergeParticle(
+inline void mutateParticle(
+    Particle *particle,
+    global float2 *path,
+    unsigned int pathStart,
+    global ulong *randomState,
+    global ulong *randomIncrement,
+    int x,
+    ViewSettings view
+) {
+    if (particle->score >= particle->prevScore || particle->score / particle->prevScore > uniformRand(randomState, randomIncrement, x)) {
+        particle->prevScore = particle->score;
+        particle->prevOffset = particle->offset;
+    }
+
+    float2 newOffset = (float2)(
+        particle->prevOffset.x + 0.01 * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5., 5.),
+        particle->prevOffset.y + 0.01 * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5., 5.)
+    );
+
+    particle->pos = newOffset;
+    particle->offset = newOffset;
+    particle->iterCount = 1;
+    particle->score = 0;
+
+    path[pathStart] = newOffset;
+}
+
+inline void convergeParticle(
     Particle *particle,
     global float2 *path,
     unsigned int pathStart,
@@ -395,12 +422,13 @@ inline bool convergeParticle(
         }
     }
 
-    particle->score = dist;
-
-    if (dist < 0.01) {
-        return true;
+    int2 pixel = fractalToPixel(path[pathStart + iOpt], view);
+    if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) {
+        particle->prevScore = 1;
+        particle->score = 1;
+        mutateParticle(particle, path, pathStart, randomState, randomIncrement, x, view);
+        return;
     }
-
 
     float2 diff = target - path[pathStart + iOpt];
     float2 step = project(diff, dzxOpt, dzyOpt);
@@ -412,40 +440,11 @@ inline bool convergeParticle(
 
     float2 newOffset = particle->offset + (float)0.5 * step;
 
-    particle->prevOffset = step;
-
+    particle->prevOffset = particle->offset;
+    
     particle->pos = newOffset;
     particle->offset = newOffset;
     particle->iterCount = 1;
-
-    path[pathStart] = newOffset;
-
-    return dist < view.scaleY;
-}
-
-inline void mutateParticle(
-    Particle *particle,
-    global float2 *path,
-    unsigned int pathStart,
-    global ulong *randomState,
-    global ulong *randomIncrement,
-    int x,
-    ViewSettings view
-) {
-    if (particle->score > particle->prevScore || particle->score / particle->prevScore > uniformRand(randomState, randomIncrement, x)) {
-        particle->prevScore = particle->score;
-        particle->prevOffset = particle->offset;
-    }
-
-    float2 newOffset = (float2)(
-        particle->prevOffset.x + 0.01 * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5., 5.),
-        particle->prevOffset.y + 0.01 * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5., 5.)
-    );
-
-    particle->pos = newOffset;
-    particle->offset = newOffset;
-    particle->iterCount = 1;
-    particle->score = 0;
 
     path[pathStart] = newOffset;
 }
@@ -482,39 +481,32 @@ __kernel void mandelStep(
     Particle tmp = particles[x];
     bool escaped = false;
 
-    for (int i = 0; i < 800; i++) {
+    for (int i = 0; i < 1; i++) {
         tmp.pos = csquare(tmp.pos) + tmp.offset;
         path[pathIndex + tmp.iterCount] = tmp.pos;
         tmp.iterCount++;
 
-        tmp.pos = csquare(tmp.pos) + tmp.offset;
-        path[pathIndex + tmp.iterCount] = tmp.pos;
-        tmp.iterCount++;
+        // tmp.pos = csquare(tmp.pos) + tmp.offset;
+        // path[pathIndex + tmp.iterCount] = tmp.pos;
+        // tmp.iterCount++;
 
-        tmp.pos = csquare(tmp.pos) + tmp.offset;
-        path[pathIndex + tmp.iterCount] = tmp.pos;
-        tmp.iterCount++;
+        // tmp.pos = csquare(tmp.pos) + tmp.offset;
+        // path[pathIndex + tmp.iterCount] = tmp.pos;
+        // tmp.iterCount++;
 
-        tmp.pos = csquare(tmp.pos) + tmp.offset;
-        path[pathIndex + tmp.iterCount] = tmp.pos;
-        tmp.iterCount++;
+        // tmp.pos = csquare(tmp.pos) + tmp.offset;
+        // path[pathIndex + tmp.iterCount] = tmp.pos;
+        // tmp.iterCount++;
 
-        tmp.pos = csquare(tmp.pos) + tmp.offset;
-        path[pathIndex + tmp.iterCount] = tmp.pos;
-        tmp.iterCount++;
+        // tmp.pos = csquare(tmp.pos) + tmp.offset;
+        // path[pathIndex + tmp.iterCount] = tmp.pos;
+        // tmp.iterCount++;
 
         escaped = fabs(tmp.pos.x) > 4 || fabs(tmp.pos.y) > 4 || cnorm2(tmp.pos) > 16;
 
         if (tmp.prevScore == 0 && (tmp.iterCount > MAX_CONVERGE_STEPS || escaped)) {
             convergeParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view);
         }
-
-        // if (tmp.prevScore == -1 && tmp.iterCount > 100) {
-        //     if (convergeParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view)) {
-        //         tmp.prevScore = 0;
-        //     }
-        //     continue;
-        // }
 
         else if (escaped) {
             int thresholdIndex = matchThreshold(tmp, threshold, thresholdCount);
@@ -561,9 +553,12 @@ __kernel void findMax2(global unsigned int *maxima, global unsigned int *maximum
  */
 
 __constant float COLOR_SCHEME[4][3] = {
-    {0.1, 0.0, 0.2,},
-    {0.0, 0.5, 0.6,},
-    {0.8, 0.5, 0.0,},
+    {1., 0., 0.,},
+    {0., 1., 0.,},
+    {0., 0., 1.,},
+    // {0.1, 0.0, 0.2,},
+    // {0.0, 0.5, 0.6,},
+    // {0.8, 0.5, 0.0,},
     {0.1, 0.0, 0.2,},
 };
 

@@ -219,6 +219,7 @@ void keyPressedFW(unsigned char key, int x, int y) {
             break;
         case 'R':
             opencl->step("resetCount");
+        case 'i':
             opencl->step("initParticles");
             break;
         default:
