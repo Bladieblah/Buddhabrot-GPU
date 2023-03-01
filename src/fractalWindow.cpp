@@ -23,7 +23,7 @@ void showParticles() {
 
     for (int i = 0; i < config->particle_count; i++) {
         Particle particle = particles[i];
-        PixelCoordinate coord = ((FractalCoordinate){particle.prevOffset.s[0], particle.prevOffset.s[1]}).toPixel(defaultView);
+        PixelCoordinate coord = ((FractalCoordinate){particle.offset.s[0], particle.offset.s[1]}).toPixel(defaultView);
 
         if (particle.prevScore == -1) {
             glColor3f(1,0,0);
@@ -39,7 +39,13 @@ void showParticles() {
             2 * coord.x / (float)viewFW.sizeX - 1,
             2 * coord.y / (float)viewFW.sizeY - 1
         );
+
+        if (i < 20) {
+            fprintf(stderr, "(%f, %f) %f %d\n", particle.offset.s[0], particle.offset.s[1], particle.score, particle.iterCount);
+        }
     }
+
+    fprintf(stderr, "\n");
 }
 
 void drawGrid() {

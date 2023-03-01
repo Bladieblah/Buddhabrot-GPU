@@ -22,6 +22,7 @@ public:
     unsigned int frame_steps = 100;
 
     bool profile = true;
+    bool verbose = true;
 
     Config(char *filename);
     void printValues();
@@ -47,6 +48,7 @@ private:
         {"maximum_size", {'i', (void *)&maximum_size}},
         {"frame_steps", {'i', (void *)&frame_steps}},
         {"profile", {'b', (void *)&profile}},
+        {"verbose", {'b', (void *)&verbose}},
     };
 };
 

@@ -163,6 +163,8 @@ void display() {
     if (frameCount % 2 == 0) {
         return;
     }
+    
+    displayFW();
 
     opencl->step("mandelStep", config->frame_steps);
     opencl->step("findMax1");
@@ -170,12 +172,15 @@ void display() {
     opencl->step("renderImage");
     opencl->readBuffer("image", pixelsFW);
 
-    displayFW();
 
     chrono::high_resolution_clock::time_point temp = chrono::high_resolution_clock::now();
     chrono::duration<float> time_span = chrono::duration_cast<chrono::duration<float>>(temp - frameTime);
     fprintf(stderr, "Step = %d, time = %.4g            \n", frameCount / 2, time_span.count());
-    fprintf(stderr, "\x1b[5A");
+    if (config->profile) {
+        fprintf(stderr, "\x1b[5A");
+    } else {
+        fprintf(stderr, "\x1b[1A");
+    }
     frameTime = temp; 
 }
 

@@ -314,16 +314,22 @@ inline void resetParticle(
     int x
 ) {
     float2 newOffset;
-    for (int i = 0; i < 50; i++) {
-        newOffset = (float2)(
-            (9. * uniformRand(randomState, randomIncrement, x) - 5.2),
-            (6. * uniformRand(randomState, randomIncrement, x) - 3.)
-        );
+    
+    newOffset = (float2)(
+        (4. * uniformRand(randomState, randomIncrement, x) - 2.5),
+        (2.4 * uniformRand(randomState, randomIncrement, x) - 1.2)
+    );
 
-        if (isValid(newOffset)) {
-            break;
-        }
-    }
+    // for (int i = 0; i < 50; i++) {
+    //     newOffset = (float2)(
+    //         (9. * uniformRand(randomState, randomIncrement, x) - 5.2),
+    //         (6. * uniformRand(randomState, randomIncrement, x) - 3.)
+    //     );
+
+    //     if (isValid(newOffset)) {
+    //         break;
+    //     }
+    // }
 
     particle->iterCount = 1;
     particle->pos = newOffset;
@@ -340,7 +346,8 @@ inline float2 project(float2 v, float2 u1, float2 u2) {
     float u22 = cnorm2(u2);
     float u12 = cdot(u1, u2);
 
-    float idet = 1. / (u11 * u22 - pown(u12, 2));
+    float det = (u11 * u22 - pown(u12, 2));
+    float idet = det > 0.001 ? 1. / det : 0;
 
     float a1 = cdot(v, u1);
     float a2 = cdot(v, u2);
@@ -352,7 +359,7 @@ inline float2 project(float2 v, float2 u1, float2 u2) {
 }
 
 constant int MAX_CONVERGE_STEPS = 100;
-constant float MAX_CONVERGE_STEP_SIZE =  0.5;
+constant float MAX_CONVERGE_STEP_SIZE =  0.02;
 
 inline bool convergeParticle(
     Particle *particle,
@@ -363,7 +370,7 @@ inline bool convergeParticle(
     int x,
     ViewSettings view
 ) {
-    float2 z;
+    float2 z = path[pathStart];
     float2 dzx = {1., 0.};
     float2 dzy = {0., 1.};
 
@@ -373,14 +380,14 @@ inline bool convergeParticle(
     int iOpt = 0;
 
     int imax = min(MAX_CONVERGE_STEPS, (int)particle->iterCount);
-    float2 target = (float2){view.centerX, view.centerY};
+    float2 target = (float2){-0.6, 0.6};
 
     for (int i = 1; i < imax; i++) {
         dzx = (float)2. * cmul(z, dzx) + (float2){1., 0.};
         dzy = (float)2. * cmul(z, dzy) + (float2){0., 1.};
         z = path[pathStart + i];
         
-        float testDist = cnorm2(target - z);
+        float testDist = cnorm(target - z);
 
         if (testDist < dist) {
             dist = testDist;
@@ -390,24 +397,28 @@ inline bool convergeParticle(
         }
     }
 
+    particle->score = dist;
+
+    if (dist < 0.01) {
+        return true;
+    }
+
 
     float2 diff = target - path[pathStart + iOpt];
     float2 step = project(diff, dzxOpt, dzyOpt);
     float stepSize = cnorm(step);
 
-    if (stepSize > 0.01) {
-        step = step / stepSize * 0.01;
+    if (stepSize > MAX_CONVERGE_STEP_SIZE) {
+        step = step / stepSize * MAX_CONVERGE_STEP_SIZE;
     }
 
     float2 newOffset = particle->offset + (float)0.5 * step;
 
-    // particle->prevScore = particle->score;
-    particle->prevOffset = particle->offset;
+    particle->prevOffset = step;
 
     particle->pos = newOffset;
     particle->offset = newOffset;
     particle->iterCount = 1;
-    // particle->score = 0;
 
     path[pathStart] = newOffset;
 
