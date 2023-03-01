@@ -40,7 +40,14 @@ typedef struct KernelSpec {
 
 class OpenCl {
 public:
-    OpenCl(char *filename, std::vector<BufferSpec> bufferArgs, std::vector<KernelSpec> kernelArgs, bool profile = false, bool useGpu = true);
+    OpenCl(
+        char *filename,
+        std::vector<BufferSpec> bufferArgs,
+        std::vector<KernelSpec> kernelArgs,
+        bool profile = false,
+        bool useGpu = true,
+        bool verbose = true
+    );
     void prepare(std::vector<BufferSpec> bufferArgs, std::vector<KernelSpec> kernelArgs);
     void setDevice();
     void getPlatformIds();
@@ -68,7 +75,6 @@ public:
 
     cl_event timer_event;
 
-
     cl_program program;
     std::map<std::string, OpenClKernel> kernels;
     std::map<std::string, OpenClBuffer> buffers;
@@ -82,6 +88,7 @@ public:
     char *filename;
     bool use_gpu;
     bool profile;
+    bool verbose;
 
     std::chrono::high_resolution_clock::time_point startingTime;
 

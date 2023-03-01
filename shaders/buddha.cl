@@ -313,30 +313,28 @@ inline void resetParticle(
     global ulong *randomIncrement,
     int x
 ) {
-    float2 newOffset;
-    
-    newOffset = (float2)(
-        (4. * uniformRand(randomState, randomIncrement, x) - 2.5),
-        (2.4 * uniformRand(randomState, randomIncrement, x) - 1.2)
+    float2 newOffset = (float2)(
+        (9. * uniformRand(randomState, randomIncrement, x) - 5.2),
+        (6. * uniformRand(randomState, randomIncrement, x) - 3.)
     );
 
-    // for (int i = 0; i < 50; i++) {
-    //     newOffset = (float2)(
-    //         (9. * uniformRand(randomState, randomIncrement, x) - 5.2),
-    //         (6. * uniformRand(randomState, randomIncrement, x) - 3.)
-    //     );
+    for (int i = 0; i < 50; i++) {
+        if (isValid(newOffset)) {
+            break;
+        }
 
-    //     if (isValid(newOffset)) {
-    //         break;
-    //     }
-    // }
+        newOffset = (float2)(
+            (9. * uniformRand(randomState, randomIncrement, x) - 5.2),
+            (6. * uniformRand(randomState, randomIncrement, x) - 3.)
+        );
+    }
 
     particle->iterCount = 1;
     particle->pos = newOffset;
     particle->offset = newOffset;
     particle->prevOffset = newOffset;
     particle->score = 0;
-    particle->prevScore = -1;
+    particle->prevScore = 0;
 
     path[pathStart] = newOffset;
 }
@@ -482,29 +480,32 @@ __kernel void mandelStep(
     const unsigned int pathIndex = x * maxLength;
 
     Particle tmp = particles[x];
+    bool escaped = false;
 
-    for (int i = 0; i < 1; i++) {
+    for (int i = 0; i < 800; i++) {
         tmp.pos = csquare(tmp.pos) + tmp.offset;
         path[pathIndex + tmp.iterCount] = tmp.pos;
         tmp.iterCount++;
 
-        // tmp.pos = csquare(tmp.pos) + tmp.offset;
-        // path[pathIndex + tmp.iterCount] = tmp.pos;
-        // tmp.iterCount++;
+        tmp.pos = csquare(tmp.pos) + tmp.offset;
+        path[pathIndex + tmp.iterCount] = tmp.pos;
+        tmp.iterCount++;
 
-        // tmp.pos = csquare(tmp.pos) + tmp.offset;
-        // path[pathIndex + tmp.iterCount] = tmp.pos;
-        // tmp.iterCount++;
+        tmp.pos = csquare(tmp.pos) + tmp.offset;
+        path[pathIndex + tmp.iterCount] = tmp.pos;
+        tmp.iterCount++;
 
-        // tmp.pos = csquare(tmp.pos) + tmp.offset;
-        // path[pathIndex + tmp.iterCount] = tmp.pos;
-        // tmp.iterCount++;
+        tmp.pos = csquare(tmp.pos) + tmp.offset;
+        path[pathIndex + tmp.iterCount] = tmp.pos;
+        tmp.iterCount++;
 
-        // tmp.pos = csquare(tmp.pos) + tmp.offset;
-        // path[pathIndex + tmp.iterCount] = tmp.pos;
-        // tmp.iterCount++;
+        tmp.pos = csquare(tmp.pos) + tmp.offset;
+        path[pathIndex + tmp.iterCount] = tmp.pos;
+        tmp.iterCount++;
 
-        if (tmp.iterCount > 100 || cnorm2(tmp.pos) > 16) {
+        escaped = fabs(tmp.pos.x) > 4 || fabs(tmp.pos.y) > 4 || cnorm2(tmp.pos) > 16;
+
+        if (tmp.prevScore == 0 && (tmp.iterCount > MAX_CONVERGE_STEPS || escaped)) {
             convergeParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view);
         }
 
@@ -515,29 +516,15 @@ __kernel void mandelStep(
         //     continue;
         // }
 
-        // if (fabs(tmp.pos.x) > 4 || fabs(tmp.pos.y) > 4 || cnorm2(tmp.pos) > 16) {
-        //     int thresholdIndex = matchThreshold(tmp, threshold, thresholdCount);
-        //     addPath(&tmp, path, count, threshold, thresholdCount, pathIndex, thresholdIndex, view);
-            
-        //     if (tmp.prevScore < 0 && tmp.score > 0) {
-        //         tmp.prevOffset = tmp.offset;
-        //         tmp.prevScore = tmp.score;
-        //     }
+        else if (escaped) {
+            int thresholdIndex = matchThreshold(tmp, threshold, thresholdCount);
+            addPath(&tmp, path, count, threshold, thresholdCount, pathIndex, thresholdIndex, view);
+            mutateParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view);
+        }
 
-        //     if (tmp.prevScore > 5){
-        //         mutateParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view);
-        //     } else {
-        //         convergeParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view);
-        //     }
-        // }
-
-        // if (tmp.iterCount >= maxLength) {
-        //     if (tmp.prevScore == -1) {
-        //         resetParticle(&tmp, path, pathIndex, randomState, randomIncrement, x);
-        //     } else {
-        //         mutateParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view);
-        //     }
-        // }
+        else if (tmp.iterCount >= maxLength) {
+            mutateParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view);
+        }
     }
 
     particles[x] = tmp;

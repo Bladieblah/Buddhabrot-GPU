@@ -13,11 +13,13 @@ OpenCl::OpenCl(
     vector<BufferSpec> bufferSpecs,
     vector<KernelSpec> kernelSpecs,
     bool profile,
-    bool useGpu
+    bool useGpu,
+    bool verbose
 ) {
     this->filename = filename;
     this->use_gpu = useGpu;
     this->profile = profile;
+    this->verbose = verbose;
     
     this->prepare(bufferSpecs, kernelSpecs);
 }
@@ -159,9 +161,8 @@ void OpenCl::writeBuffer(string name, void *pointer) {
 
 void OpenCl::step(string name, int count) {
     OpenClKernel kernel = kernels[name];
-    if (profile) {
-        startTimer();
-    }
+
+    startTimer();
 
     for (int i = 0; i < count; i++) {
         ret = clEnqueueNDRangeKernel(command_queue, kernel.kernel, kernel.work_dim, NULL, kernel.global_size, kernel.local_size, 0, NULL, NULL);
@@ -172,21 +173,19 @@ void OpenCl::step(string name, int count) {
         }
     }
 
-    if (profile) {
-        getTime();
-        fprintf(stderr, "%s ", name.c_str());
-        for (int i = strlen(name.c_str()); i < 20; i++) {
-            fprintf(stderr, " ");
-        }
-
-        fprintf(stderr, "Chrono = %09.1fμs", chronoTime);
-        
-        if (profile) {
-            fprintf(stderr, "OpenCL = %09.1fμs", clTime);
-        }
-
-        fprintf(stderr, "\n");
+    getTime();
+    fprintf(stderr, "%s ", name.c_str());
+    for (int i = strlen(name.c_str()); i < 20; i++) {
+        fprintf(stderr, " ");
     }
+
+    fprintf(stderr, "Chrono = %09.1fμs", chronoTime);
+    
+    if (profile) {
+        fprintf(stderr, "OpenCL = %09.1fμs", clTime);
+    }
+
+    fprintf(stderr, "\n");
 }
 
 void OpenCl::readBuffer(string name, void *pointer) {

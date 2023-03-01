@@ -40,12 +40,12 @@ void showParticles() {
             2 * coord.y / (float)viewFW.sizeY - 1
         );
 
-        if (i < 20) {
-            fprintf(stderr, "(%f, %f) %f %d\n", particle.offset.s[0], particle.offset.s[1], particle.score, particle.iterCount);
-        }
+        // if (i < 20) {
+        //     fprintf(stderr, "(%f, %f) %f %d\n", particle.offset.s[0], particle.offset.s[1], particle.score, particle.iterCount);
+        // }
     }
 
-    fprintf(stderr, "\n");
+    // fprintf(stderr, "\n");
 }
 
 void drawGrid() {

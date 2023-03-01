@@ -128,7 +128,9 @@ void prepareOpenCl() {
         "shaders/buddha.cl",
         bufferSpecs,
         kernelSpecs,
-        config->profile
+        config->profile,
+        true,
+        config->verbose
     );
 
     setKernelArgs();
@@ -176,7 +178,7 @@ void display() {
     chrono::high_resolution_clock::time_point temp = chrono::high_resolution_clock::now();
     chrono::duration<float> time_span = chrono::duration_cast<chrono::duration<float>>(temp - frameTime);
     fprintf(stderr, "Step = %d, time = %.4g            \n", frameCount / 2, time_span.count());
-    if (config->profile) {
+    if (config->verbose) {
         fprintf(stderr, "\x1b[5A");
     } else {
         fprintf(stderr, "\x1b[1A");
@@ -192,7 +194,7 @@ void cleanAll() {
 
 int main(int argc, char **argv) {
     config = new Config("config.cfg");
-    // config->printValues();
+    config->printValues();
 
     int remainder = config->width * config->height % config->maximum_size;
 
