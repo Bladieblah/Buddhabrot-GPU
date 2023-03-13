@@ -271,7 +271,22 @@ void keyPressedFW(unsigned char key, int x, int y) {
 }
 
 void specialKeyPressedFW(int key, int x, int y) {
-
+    switch (key) {
+        case GLUT_KEY_RIGHT:
+            updateView(viewFW.scaleY, viewFW.centerX + 0.1 * viewFW.scaleY, viewFW.centerY, viewFW.theta);
+            break;
+        case GLUT_KEY_LEFT:
+            updateView(viewFW.scaleY, viewFW.centerX - 0.1 * viewFW.scaleY, viewFW.centerY, viewFW.theta);
+            break;
+        case GLUT_KEY_UP:
+            updateView(viewFW.scaleY, viewFW.centerX, viewFW.centerY + 0.1 * viewFW.scaleY, viewFW.theta);
+            break;
+        case GLUT_KEY_DOWN:
+            updateView(viewFW.scaleY, viewFW.centerX, viewFW.centerY - 0.1 * viewFW.scaleY, viewFW.theta);
+            break;
+        default:
+            break;
+    }
 }
 
 void translateCamera(ScreenCoordinate coords) {
