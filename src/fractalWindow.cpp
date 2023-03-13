@@ -17,6 +17,7 @@ Particle *particles;
 WindowSettings settingsFW;
 MouseState mouseFW;
 ViewSettings viewFW, defaultView;
+bool selecting = true;
 
 void showParticles() {
     opencl->readBuffer("particles", particles);
@@ -81,6 +82,37 @@ void drawBox() {
     glEnd();
 }
 
+void drawPath() {
+    ScreenCoordinate screen({mouseFW.x, mouseFW.y});
+    FractalCoordinate fractal = screen.toPixel(settingsFW).toFractal(defaultView);
+    FractalCoordinate offset(fractal);
+    
+    glPointSize(5);
+    glColor3f(1, 0, 1);
+    glEnable(GL_POINT_SMOOTH);
+    
+    glBegin(GL_POINTS);
+
+    glVertex2f(
+        2 * fractal.toPixel(defaultView).x / (float)viewFW.sizeX - 1,
+        2 * fractal.toPixel(defaultView).y / (float)viewFW.sizeY - 1
+    );
+
+    for (int i = 0; i < 20; i++) {
+        float tmp = 2 * fractal.x * fractal.y + offset.y;
+        fractal.x = fractal.x * fractal.x - fractal.y * fractal.y + offset.x;
+        fractal.y = tmp;
+
+        glVertex2f(
+            2 * fractal.toPixel(defaultView).x / (float)viewFW.sizeX - 1,
+            2 * fractal.toPixel(defaultView).y / (float)viewFW.sizeY - 1
+        );
+        
+    }
+
+    glEnd();
+}
+
 void displayFW() {
     glutSetWindow(windowIdFW);
 
@@ -135,7 +167,11 @@ void displayFW() {
     }
 
     if (mouseFW.state == GLUT_DOWN) {
-        drawBox();
+        if (selecting) {
+            drawBox();
+        } else {
+            drawPath();
+        }
     }
 
     glFlush();
@@ -195,6 +231,9 @@ void keyPressedFW(unsigned char key, int x, int y) {
         case 'g':
             settingsFW.grid = ! settingsFW.grid;
             break;
+        case 'b':
+            selecting = ! selecting;
+            break;
         case 'r':
             settingsFW.zoom = 1.;
             settingsFW.centerX = 0.;
@@ -237,11 +276,11 @@ void translateCamera(ScreenCoordinate coords) {
 }
 
 void mousePressedFW(int button, int state, int x, int y) {
-    if (button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN) {
-        translateCamera((ScreenCoordinate){x, y});
-    }
+    if (button == GLUT_RIGHT_BUTTON) {
+        if (state == GLUT_DOWN) {
+            translateCamera((ScreenCoordinate){x, y});
+        }
 
-    if (button != GLUT_LEFT_BUTTON) {
         return;
     }
 

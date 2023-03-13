@@ -481,26 +481,26 @@ __kernel void mandelStep(
     Particle tmp = particles[x];
     bool escaped = false;
 
-    for (int i = 0; i < 1; i++) {
+    for (int i = 0; i < 100; i++) {
         tmp.pos = csquare(tmp.pos) + tmp.offset;
         path[pathIndex + tmp.iterCount] = tmp.pos;
         tmp.iterCount++;
 
-        // tmp.pos = csquare(tmp.pos) + tmp.offset;
-        // path[pathIndex + tmp.iterCount] = tmp.pos;
-        // tmp.iterCount++;
+        tmp.pos = csquare(tmp.pos) + tmp.offset;
+        path[pathIndex + tmp.iterCount] = tmp.pos;
+        tmp.iterCount++;
 
-        // tmp.pos = csquare(tmp.pos) + tmp.offset;
-        // path[pathIndex + tmp.iterCount] = tmp.pos;
-        // tmp.iterCount++;
+        tmp.pos = csquare(tmp.pos) + tmp.offset;
+        path[pathIndex + tmp.iterCount] = tmp.pos;
+        tmp.iterCount++;
 
-        // tmp.pos = csquare(tmp.pos) + tmp.offset;
-        // path[pathIndex + tmp.iterCount] = tmp.pos;
-        // tmp.iterCount++;
+        tmp.pos = csquare(tmp.pos) + tmp.offset;
+        path[pathIndex + tmp.iterCount] = tmp.pos;
+        tmp.iterCount++;
 
-        // tmp.pos = csquare(tmp.pos) + tmp.offset;
-        // path[pathIndex + tmp.iterCount] = tmp.pos;
-        // tmp.iterCount++;
+        tmp.pos = csquare(tmp.pos) + tmp.offset;
+        path[pathIndex + tmp.iterCount] = tmp.pos;
+        tmp.iterCount++;
 
         escaped = fabs(tmp.pos.x) > 4 || fabs(tmp.pos.y) > 4 || cnorm2(tmp.pos) > 16;
 
