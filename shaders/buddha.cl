@@ -216,6 +216,32 @@ inline int matchThreshold(
     return -1;
 }
 
+inline int getScore(
+    Particle *particle,
+    global float2 *path,
+    unsigned int pathStart,
+    ViewSettings view
+) {
+    int score = 0;
+    
+    for (unsigned int i = 0; i < particle->iterCount; i++) {
+        int2 pixel = fractalToPixel(path[pathStart + i], view);
+
+        if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) {
+            score += 1;
+        }
+
+        path[pathStart + i].y = -path[pathStart + i].y;
+        pixel = fractalToPixel(path[pathStart + i], view);
+
+        if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) {
+            score += 1;
+        }
+    }
+
+    return score;
+}
+
 inline void addPath(
     Particle *particle,
     global float2 *path,
@@ -305,10 +331,7 @@ inline bool isValid(float2 coord) {
     return true;
 }
 
-inline void resetParticle(
-    Particle *particle,
-    global float2 *path,
-    unsigned int pathStart,
+inline float2 getNewPos(
     global ulong *randomState,
     global ulong *randomIncrement,
     int x
@@ -329,6 +352,19 @@ inline void resetParticle(
         );
     }
 
+    return newOffset;
+}
+
+inline void resetParticle(
+    Particle *particle,
+    global float2 *path,
+    unsigned int pathStart,
+    global ulong *randomState,
+    global ulong *randomIncrement,
+    int x
+) {
+    float2 newOffset = getNewPos(randomState, randomIncrement, x);
+
     particle->iterCount = 1;
     particle->pos = newOffset;
     particle->offset = newOffset;
@@ -339,24 +375,7 @@ inline void resetParticle(
     path[pathStart] = newOffset;
 }
 
-inline float2 project(float2 v, float2 u1, float2 u2) {
-    float u11 = cnorm2(u1);
-    float u22 = cnorm2(u2);
-    float u12 = cdot(u1, u2);
-
-    float det = (u11 * u22 - pown(u12, 2));
-    float idet = det > 0.001 ? 1. / det : 0;
-
-    float a1 = cdot(v, u1);
-    float a2 = cdot(v, u2);
-
-    return (float2) {
-        idet * (a1 * u22 - a2 * u12),
-        idet * (a2 * u11 - a1 * u12)
-    };
-}
-
-constant int MAX_CONVERGE_STEPS = 100;
+constant unsigned int MAX_CONVERGE_STEPS = 500;
 constant float MAX_CONVERGE_STEP_SIZE =  0.02;
 
 inline void mutateParticle(
@@ -382,69 +401,6 @@ inline void mutateParticle(
     particle->offset = newOffset;
     particle->iterCount = 1;
     particle->score = 0;
-
-    path[pathStart] = newOffset;
-}
-
-inline void convergeParticle(
-    Particle *particle,
-    global float2 *path,
-    unsigned int pathStart,
-    global ulong *randomState,
-    global ulong *randomIncrement,
-    int x,
-    ViewSettings view
-) {
-    float2 z = path[pathStart];
-    float2 dzx = {1., 0.};
-    float2 dzy = {0., 1.};
-
-    float dist = 100;
-    float2 dzxOpt = dzx;
-    float2 dzyOpt = dzy;
-    int iOpt = 0;
-
-    int imax = min(MAX_CONVERGE_STEPS, (int)particle->iterCount);
-    float2 target = (float2){-0.6, 0.6};
-
-    for (int i = 1; i < imax; i++) {
-        dzx = (float)2. * cmul(z, dzx) + (float2){1., 0.};
-        dzy = (float)2. * cmul(z, dzy) + (float2){0., 1.};
-        z = path[pathStart + i];
-        
-        float testDist = cnorm(target - z);
-
-        if (testDist < dist) {
-            dist = testDist;
-            dzxOpt = dzx;
-            dzyOpt = dzy;
-            iOpt = i;
-        }
-    }
-
-    int2 pixel = fractalToPixel(path[pathStart + iOpt], view);
-    if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) {
-        particle->prevScore = 1;
-        particle->score = 1;
-        mutateParticle(particle, path, pathStart, randomState, randomIncrement, x, view);
-        return;
-    }
-
-    float2 diff = target - path[pathStart + iOpt];
-    float2 step = project(diff, dzxOpt, dzyOpt);
-    float stepSize = cnorm(step);
-
-    if (stepSize > MAX_CONVERGE_STEP_SIZE) {
-        step = step / stepSize * MAX_CONVERGE_STEP_SIZE;
-    }
-
-    float2 newOffset = particle->offset + (float)0.5 * step;
-
-    particle->prevOffset = particle->offset;
-    
-    particle->pos = newOffset;
-    particle->offset = newOffset;
-    particle->iterCount = 1;
 
     path[pathStart] = newOffset;
 }
@@ -481,7 +437,7 @@ __kernel void mandelStep(
     Particle tmp = particles[x];
     bool escaped = false;
 
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 800; i++) {
         tmp.pos = csquare(tmp.pos) + tmp.offset;
         path[pathIndex + tmp.iterCount] = tmp.pos;
         tmp.iterCount++;
@@ -504,11 +460,20 @@ __kernel void mandelStep(
 
         escaped = fabs(tmp.pos.x) > 4 || fabs(tmp.pos.y) > 4 || cnorm2(tmp.pos) > 16;
 
-        if (tmp.prevScore == 0 && (tmp.iterCount > MAX_CONVERGE_STEPS || escaped)) {
-            convergeParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view);
-        }
+        // if (tmp.prevScore == 0 && (tmp.iterCount > MAX_CONVERGE_STEPS || escaped)) {
+        //     convergeParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view);
+        // }
+        if (tmp.prevScore < 10 && (tmp.iterCount > MAX_CONVERGE_STEPS || escaped)) {
+            tmp.prevScore = getScore(&tmp, path, pathIndex, view);
+            if (tmp.prevScore < 10) {
+                tmp.prevOffset = tmp.offset;
+                tmp.pos = getNewPos(randomState, randomIncrement, x);
+                tmp.offset = tmp.pos;
+                tmp.iterCount = 1;
+                tmp.score = 0;
+            }
+        } if (escaped) {
 
-        else if (escaped) {
             int thresholdIndex = matchThreshold(tmp, threshold, thresholdCount);
             addPath(&tmp, path, count, threshold, thresholdCount, pathIndex, thresholdIndex, view);
             mutateParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view);
@@ -553,12 +518,12 @@ __kernel void findMax2(global unsigned int *maxima, global unsigned int *maximum
  */
 
 __constant float COLOR_SCHEME[4][3] = {
-    {1., 0., 0.,},
-    {0., 1., 0.,},
-    {0., 0., 1.,},
-    // {0.1, 0.0, 0.2,},
-    // {0.0, 0.5, 0.6,},
-    // {0.8, 0.5, 0.0,},
+    // {1., 0., 0.,},
+    // {0., 1., 0.,},
+    // {0., 0., 1.,},
+    {0.2, 0.0, 0.4,},
+    {0.0, 0.5, 0.6,},
+    {0.8, 0.5, 0.0,},
     {0.1, 0.0, 0.2,},
 };
 
