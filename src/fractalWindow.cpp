@@ -1,6 +1,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include <cmath>
+#include <stack>
 
 #include <OpenGL/gl.h>
 #include <OpenGL/glu.h>
@@ -17,6 +18,7 @@ Particle *particles;
 WindowSettings settingsFW;
 MouseState mouseFW;
 ViewSettings viewFW, defaultView;
+std::stack<ViewSettings> viewStackFW;
 bool selecting = true;
 
 void showParticles() {
@@ -188,6 +190,8 @@ void updateView(float scale, float centerX, float centerY, float theta) {
     fprintf(stderr, "center = (%.3f, %.3f)\n", centerX, centerY);
     fprintf(stderr, "theta = %.3f\n", theta);
 
+    viewStackFW.push(ViewSettings(viewFW));
+
     viewFW.scaleX = scale / viewFW.scaleY * viewFW.scaleX;
     viewFW.scaleY = scale;
     
@@ -244,7 +248,13 @@ void keyPressedFW(unsigned char key, int x, int y) {
             settingsFW.centerY = 0.;
             break;
         case 'z':
-            updateView(1.3, -0.5, 0, 0);
+            if (!viewStackFW.empty()) {
+                viewFW = viewStackFW.top();
+                viewStackFW.pop();
+                opencl->setKernelArg("mandelStep", 7, sizeof(ViewSettings), (void*)&viewFW);
+                opencl->step("resetCount");
+                opencl->step("initParticles");
+            }
             break;
 
         case 'w':
