@@ -46,26 +46,26 @@ __constant float d[] = {
     3.754408661907416e+00
 };
 
-inline double inverseNormalCdf(double uniform) {
-	double q, r;
+inline float inverseNormalCdf(float u) {
+	float q, r;
 
-	if (uniform <= 0) {
+	if (u <= 0) {
 		return -HUGE_VAL;
 	}
-	else if (uniform < UNIFORM_LOW) {
-		q = sqrt(-2 * log(uniform));
+	else if (u < UNIFORM_LOW) {
+		q = sqrt(-2 * log(u));
 		return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) /
 			((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1);
 	}
-	else if (uniform <= UNIFORM_HIGH) {
-        q = uniform - 0.5;
+	else if (u <= UNIFORM_HIGH) {
+        q = u - 0.5;
         r = q * q;
         
         return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q /
             (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1);
 	}
-	else if (uniform < 1) {
-		q  = sqrt(-2 * log(1 - uniform));
+	else if (u < 1) {
+		q  = sqrt(-2 * log(1 - u));
 
 		return -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) /
 			((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1);
@@ -108,6 +108,14 @@ inline float uniformRand(
     return (float)pcg32Random(randomState, randomIncrement, x) / PCG_MAX_1;
 }
 
+inline float gaussianRand(
+    global ulong *randomState,
+    global ulong *randomIncrement,
+    int x
+) {
+    return inverseNormalCdf(uniformRand(randomState, randomIncrement, x));
+}
+
 /**
  * Complex math stuff
  */
@@ -120,38 +128,59 @@ inline float uniformRand(
     return (float2)( z.x * z.x - z.y * z.y, 2 * z.y * z.x);
  }
 
+ inline float cnorm2(float2 z) {
+    return z.x * z.x + z.y * z.y;
+ }
+
  inline float cnorm(float2 z) {
-    return z.x * z.x + z.y + z.y;
+    return sqrt(cnorm2(z));
+ }
+
+ inline float cdot(float2 a, float2 b) {
+    return a.x * b.x + a.y * b.y;
  }
 
 /**
  * Coordinate transformations
  */
 
-__constant float2 VIEW_CENTER = {-0.5, 0.};
-__constant float SCALEY = 1.3;
-__constant float VIEW_ANGLE = 0;
+ typedef struct ViewSettings {
+    float scaleX, scaleY;
+    float centerX, centerY;
+    float theta, sinTheta, cosTheta;
+    int sizeX, sizeY;
+} ViewSettings;
 
-__constant float2 STP_OFFSET = {1., 1.};
-__constant float2 STP_SCALE = {.5, .5};
+inline float2 rotateCoords(float2 coords, ViewSettings view) {
+    return (float2) {
+        view.cosTheta * coords.x - view.sinTheta * coords.y,
+        view.sinTheta * coords.x + view.cosTheta * coords.y
+    };
+}
 
 // Transform fractal coordinates to screen coordinates, following openGL conventions
 // The viewport spans [-1,1] in both dimensions
-inline float2 fractalToScreen(float2 fractalCoord, float2 resolution) {
-    return (fractalCoord - VIEW_CENTER) / (float2){SCALEY / resolution.y * resolution.x, SCALEY};
+inline float2 fractalToScreen(float2 fractalCoord, ViewSettings view) {
+    float2 tmp = rotateCoords((float2) {
+        (fractalCoord.x - view.centerX),
+        (fractalCoord.y - view.centerY)
+    }, view);
+
+    tmp.x = tmp.x / view.scaleX;
+    tmp.y = tmp.y / view.scaleY;
+
+    return tmp;
 }
 
-inline int2 screenToPixel(float2 screenCoord, uint2 resolution) {
-    int2 result;
-
-    result.x = (1 + screenCoord.x) / 2 * resolution.x;
-    result.y = (1 + screenCoord.y) / 2 * resolution.y;
-
-    return result;
+inline int2 screenToPixel(float2 screenCoord, ViewSettings view) {
+    return (int2) {
+        (1 + screenCoord.x) / 2 * view.sizeX,
+        (1 + screenCoord.y) / 2 * view.sizeY
+    };
 }
 
- inline int2 fractalToPixel(float2 fractalCoord, uint2 resolution) {
-    return screenToPixel(fractalToScreen(fractalCoord, (float2){(float)resolution.x, (float)resolution.y}), resolution);
+ inline int2 fractalToPixel(float2 fractalCoord, ViewSettings view) {
+    return screenToPixel(fractalToScreen(fractalCoord, view), view);
  }
 
 /**
@@ -160,9 +189,18 @@ inline int2 screenToPixel(float2 screenCoord, uint2 resolution) {
 
 typedef struct Particle {
     float2 pos;
-    float2 offset;
+    float2 offset, prevOffset;
     unsigned int iterCount;
+    float score, prevScore;
 } Particle;
+
+__kernel void resetCount(global unsigned int *count, int size) {
+    const int x = get_global_id(0);
+
+    for (int i = 0; i < size; i++) {
+        count[size * x + i] = 0;
+    }
+}
 
 inline int matchThreshold(
     Particle particle,
@@ -178,31 +216,124 @@ inline int matchThreshold(
     return -1;
 }
 
+inline int getScore(
+    Particle *particle,
+    global float2 *path,
+    unsigned int pathStart,
+    ViewSettings view
+) {
+    int score = 0;
+    
+    for (unsigned int i = 0; i < particle->iterCount; i++) {
+        int2 pixel = fractalToPixel(path[pathStart + i], view);
+
+        if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) {
+            score += 1;
+        }
+
+        path[pathStart + i].y = -path[pathStart + i].y;
+        pixel = fractalToPixel(path[pathStart + i], view);
+
+        if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) {
+            score += 1;
+        }
+    }
+
+    return score;
+}
+
 inline void addPath(
-    Particle particle,
+    Particle *particle,
     global float2 *path,
     global unsigned int *count,
     global unsigned int *threshold,
     int thresholdCount,
     unsigned int pathStart,
-    uint2 resolution,
-    int thresholdIndex
+    int thresholdIndex,
+    ViewSettings view
 ) {
-    unsigned int pixelCount = resolution.x * resolution.y;
+    unsigned int pixelCount = view.sizeX * view.sizeY;
+    // float deltaScore = 1. / (float)particle->iterCount;
     
-    for (unsigned int i = 0; i < particle.iterCount; i++) {
-        int2 pixel = fractalToPixel(path[pathStart + i], resolution);
+    for (unsigned int i = 0; i < particle->iterCount; i++) {
+        int2 pixel = fractalToPixel(path[pathStart + i], view);
 
-        if (! (pixel.x < 0 || pixel.x >= resolution.x || pixel.y < 0 || pixel.y >= resolution.y)) {
-            atomic_inc(&count[thresholdIndex * pixelCount + resolution.x * pixel.y + pixel.x]);
+        if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) {
+            atomic_inc(&count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]);
+            particle->score += 1;
+            // particle->score += 1. / (1 + log(1. + count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]));
+        }
+
+        path[pathStart + i].y = -path[pathStart + i].y;
+        pixel = fractalToPixel(path[pathStart + i], view);
+
+        if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) {
+            atomic_inc(&count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]);
+            particle->score += 1;
+            // particle->score += 1. / (1 + log(1. + count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]));
         }
     }
+
+    particle->score = pown(particle->score, 2);
 }
 
-inline void resetParticle(
-    global Particle *particles,
-    global float2 *path,
-    unsigned int pathStart,
+constant float2 CENTER_1 = {-0.1225611668766536, 0.7448617666197446};
+constant float RADIUS_1 = 0.095;
+
+constant float2 CENTER_2 = {-1.3107026413368228, 0};
+constant float2 CENTER_3 = {0.282271390766914, 0.5300606175785252};
+constant float RADIUS_3 = 0.044;
+
+constant float2 CENTER_4 = {-0.5043401754462431, 0.5627657614529813};
+constant float RADIUS_4 = 0.037;
+constant float2 CENTER_5 = {0.3795135880159236, 0.3349323055974974};
+constant float RADIUS_5 = 0.0225;
+
+inline bool isValid(float2 coord) {
+    float c2 = cnorm2(coord);
+    float a = coord.x;
+
+    if (c2 >= 4) {
+        return false;
+    }
+    
+    // Main bulb
+    if (256.0 * c2 * c2 - 96.0 * c2 + 32.0 * a < 3.0) {
+        return false;
+    }
+
+    // Head
+    if (16.0 * (c2 + 2.0 * a + 1.0) < 1.0) {
+        return false;
+    }
+
+    coord.y = fabs(coord.y);
+
+    // 2-step bulbs
+    if (cnorm(coord - CENTER_1) < RADIUS_1) {
+        return false;
+    }
+
+    // 3-step bulbs
+    if (cnorm2(coord - CENTER_2) < RADIUS_3) {
+        return false;
+    }
+    if (cnorm2(coord - CENTER_3) < RADIUS_3) {
+        return false;
+    }
+
+    // 4-step bulbs
+    if (cnorm2(coord - CENTER_4) < RADIUS_4) {
+        return false;
+    }
+    if (cnorm2(coord - CENTER_5) < RADIUS_5) {
+        return false;
+    }
+
+    return true;
+}
+
+inline float2 getNewPos(
     global ulong *randomState,
     global ulong *randomIncrement,
     int x
@@ -212,9 +343,67 @@ inline void resetParticle(
         (6. * uniformRand(randomState, randomIncrement, x) - 3.)
     );
 
-    particles[x].iterCount = 1;
-    particles[x].pos = newOffset;
-    particles[x].offset = newOffset;
+    for (int i = 0; i < 50; i++) {
+        if (isValid(newOffset)) {
+            break;
+        }
+
+        newOffset = (float2)(
+            (9. * uniformRand(randomState, randomIncrement, x) - 5.2),
+            (6. * uniformRand(randomState, randomIncrement, x) - 3.)
+        );
+    }
+
+    return newOffset;
+}
+
+inline void resetParticle(
+    Particle *particle,
+    global float2 *path,
+    unsigned int pathStart,
+    global ulong *randomState,
+    global ulong *randomIncrement,
+    int x
+) {
+    float2 newOffset = getNewPos(randomState, randomIncrement, x);
+
+    particle->iterCount = 1;
+    particle->pos = newOffset;
+    particle->offset = newOffset;
+    particle->prevOffset = newOffset;
+    particle->score = 0;
+    particle->prevScore = 0;
+
+    path[pathStart] = newOffset;
+}
+
+constant unsigned int MAX_CONVERGE_STEPS = 500;
+constant float MAX_CONVERGE_STEP_SIZE =  0.02;
+
+inline void mutateParticle(
+    Particle *particle,
+    global float2 *path,
+    unsigned int pathStart,
+    global ulong *randomState,
+    global ulong *randomIncrement,
+    int x,
+    ViewSettings view
+) {
+    if (particle->score >= particle->prevScore || particle->score / particle->prevScore > uniformRand(randomState, randomIncrement, x)) {
+        particle->prevScore = particle->score;
+        particle->prevOffset = particle->offset;
+    }
+
+    float2 newOffset = (float2)(
+        particle->prevOffset.x + 0.01 * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5., 5.),
+        particle->prevOffset.y + 0.01 * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5., 5.)
+    );
+
+    particle->pos = newOffset;
+    particle->offset = newOffset;
+    particle->iterCount = 1;
+    particle->score = 0;
+
     path[pathStart] = newOffset;
 }
 
@@ -228,7 +417,9 @@ __kernel void initParticles(
 ) {
     const int x = get_global_id(0);
 
-    resetParticle(particles, path, x * threshold[thresholdCount - 1], randomState, randomIncrement, x);
+    Particle tmp = particles[x];
+    resetParticle(&tmp, path, x * threshold[thresholdCount - 1], randomState, randomIncrement, x);
+    particles[x] = tmp;
 }
 
 __kernel void mandelStep(
@@ -239,25 +430,63 @@ __kernel void mandelStep(
     global ulong *randomState,
     global ulong *randomIncrement,
     int thresholdCount,
-    uint2 resolution
+    ViewSettings view
 ) {
     const int x = get_global_id(0);
     const unsigned int maxLength = threshold[thresholdCount - 1];
     const unsigned int pathIndex = x * maxLength;
 
-    particles[x].pos = csquare(particles[x].pos) + particles[x].offset;
-    path[pathIndex + particles[x].iterCount] = particles[x].pos;
-    particles[x].iterCount++;
+    Particle tmp = particles[x];
+    bool escaped = false;
 
-    if (cnorm(particles[x].pos) > 16) {
-        int thresholdIndex = matchThreshold(particles[x], threshold, thresholdCount);
-        addPath(particles[x], path, count, threshold, thresholdCount, pathIndex, resolution, thresholdIndex);
-        resetParticle(particles, path, pathIndex, randomState, randomIncrement, x);
+    for (int i = 0; i < 800; i++) {
+        tmp.pos = csquare(tmp.pos) + tmp.offset;
+        path[pathIndex + tmp.iterCount] = tmp.pos;
+        tmp.iterCount++;
+
+        tmp.pos = csquare(tmp.pos) + tmp.offset;
+        path[pathIndex + tmp.iterCount] = tmp.pos;
+        tmp.iterCount++;
+
+        tmp.pos = csquare(tmp.pos) + tmp.offset;
+        path[pathIndex + tmp.iterCount] = tmp.pos;
+        tmp.iterCount++;
+
+        tmp.pos = csquare(tmp.pos) + tmp.offset;
+        path[pathIndex + tmp.iterCount] = tmp.pos;
+        tmp.iterCount++;
+
+        tmp.pos = csquare(tmp.pos) + tmp.offset;
+        path[pathIndex + tmp.iterCount] = tmp.pos;
+        tmp.iterCount++;
+
+        escaped = fabs(tmp.pos.x) > 4 || fabs(tmp.pos.y) > 4 || cnorm2(tmp.pos) > 16;
+
+        // if (tmp.prevScore == 0 && (tmp.iterCount > MAX_CONVERGE_STEPS || escaped)) {
+        //     convergeParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view);
+        // }
+        if (tmp.prevScore < 10 && (tmp.iterCount > MAX_CONVERGE_STEPS || escaped)) {
+            tmp.prevScore = getScore(&tmp, path, pathIndex, view);
+            if (tmp.prevScore < 10) {
+                tmp.prevOffset = tmp.offset;
+                tmp.pos = getNewPos(randomState, randomIncrement, x);
+                tmp.offset = tmp.pos;
+                tmp.iterCount = 1;
+                tmp.score = 0;
+            }
+        } if (escaped) {
+
+            int thresholdIndex = matchThreshold(tmp, threshold, thresholdCount);
+            addPath(&tmp, path, count, threshold, thresholdCount, pathIndex, thresholdIndex, view);
+            mutateParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view);
+        }
+
+        else if (tmp.iterCount >= maxLength) {
+            mutateParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view);
+        }
     }
 
-    if (particles[x].iterCount >= maxLength) {
-        resetParticle(particles, path, pathIndex, randomState, randomIncrement, x);
-    }
+    particles[x] = tmp;
 }
 
 /**
@@ -291,9 +520,12 @@ __kernel void findMax2(global unsigned int *maxima, global unsigned int *maximum
  */
 
 __constant float COLOR_SCHEME[4][3] = {
-    {0.3, 0.0, 0.5,},
-    {0.0, 0.5, 0.3,},
-    {0.6, 0.5, 0.0,},
+    // {1., 0., 0.,},
+    // {0., 1., 0.,},
+    // {0., 0., 1.,},
+    {0.2, 0.0, 0.4,},
+    {0.0, 0.5, 0.6,},
+    {0.8, 0.5, 0.0,},
     {0.1, 0.0, 0.2,},
 };
 

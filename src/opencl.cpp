@@ -1,3 +1,4 @@
+#include <chrono>
 #include <map>
 #include <stdio.h>
 #include <string>
@@ -11,10 +12,14 @@ OpenCl::OpenCl(
     char *filename,
     vector<BufferSpec> bufferSpecs,
     vector<KernelSpec> kernelSpecs,
-    bool useGpu
+    bool profile,
+    bool useGpu,
+    bool verbose
 ) {
     this->filename = filename;
     this->use_gpu = useGpu;
+    this->profile = profile;
+    this->verbose = verbose;
     
     this->prepare(bufferSpecs, kernelSpecs);
 }
@@ -39,7 +44,11 @@ void OpenCl::prepare(vector<BufferSpec> bufferSpecs, vector<KernelSpec> kernelSp
       fprintf(stderr, "Failed on function clCreateContext: %d\n", ret);
 
     // Create command queue
-    command_queue = clCreateCommandQueue(context, device_id, 0, &ret);
+    if (profile) {
+        command_queue = clCreateCommandQueue(context, device_id, CL_QUEUE_PROFILING_ENABLE, &ret);
+    } else {
+        command_queue = clCreateCommandQueue(context, device_id, 0, &ret);
+    }
 
     // Create buffers
     for (BufferSpec bufferSpec : bufferSpecs) {
@@ -150,17 +159,38 @@ void OpenCl::writeBuffer(string name, void *pointer) {
     }
 }
 
-void OpenCl::step(string name) {
+void OpenCl::step(string name, int count) {
     OpenClKernel kernel = kernels[name];
-	ret = clEnqueueNDRangeKernel(command_queue, kernel.kernel, kernel.work_dim, NULL, kernel.item_size, NULL, 0, NULL, NULL);
-    
-    if (ret != CL_SUCCESS) {
-      fprintf(stderr, "Failed executing kernel [%s]: %d\n", name.c_str(), ret);
-      exit(1);
+
+    startTimer();
+
+    for (int i = 0; i < count; i++) {
+        ret = clEnqueueNDRangeKernel(command_queue, kernel.kernel, kernel.work_dim, NULL, kernel.global_size, kernel.local_size, 0, NULL, NULL);
+        
+        if (ret != CL_SUCCESS) {
+            fprintf(stderr, "Failed executing kernel [%s]: %d\n", name.c_str(), ret);
+            exit(1);
+        }
     }
+
+    getTime();
+    fprintf(stderr, "%s ", name.c_str());
+    for (int i = strlen(name.c_str()); i < 20; i++) {
+        fprintf(stderr, " ");
+    }
+
+    fprintf(stderr, "Chrono = %09.1fμs", chronoTime);
+    
+    if (profile) {
+        fprintf(stderr, "OpenCL = %09.1fμs", clTime);
+    }
+
+    fprintf(stderr, "\n");
 }
 
 void OpenCl::readBuffer(string name, void *pointer) {
+    // startTimer();
+
     ret = clEnqueueReadBuffer(
         command_queue,
         buffers[name].buffer,
@@ -170,10 +200,20 @@ void OpenCl::readBuffer(string name, void *pointer) {
         pointer,
         0, NULL, NULL
     );
+
+    // getTime();
+    // fprintf(stderr, "Buffer %s ", name.c_str());
+    // for (int i = strlen(name.c_str()); i < 13; i++) {
+    //     fprintf(stderr, " ");
+    // }
+
+    // fprintf(stderr, "Chrono = %09.1fμs", chronoTime);
     
-    if (ret != CL_SUCCESS) {
-      fprintf(stderr, "Failed reading buffer %s: %d\n", name.c_str(), ret);
-    }
+    // if (profile) {
+    //     fprintf(stderr, "OpenCL = %09.1fμs", clTime);
+    // }
+
+    // fprintf(stderr, "\n");
 }
 
 void OpenCl::cleanup() {
@@ -247,5 +287,31 @@ void OpenCl::getDeviceIds(cl_platform_id platformId) {
                 fprintf(stderr, "Could not match type %llu\n", devType);
                 break;
         }
+    }
+}
+
+void OpenCl::startTimer() {
+    if (profile) {
+        clReleaseEvent(timer_event);
+        ret = clEnqueueMarkerWithWaitList(command_queue, 0, NULL, &timer_event);
+    }
+
+    startingTime = chrono::high_resolution_clock::now();
+}
+
+void OpenCl::getTime() {
+    clFinish(command_queue);
+
+    std::chrono::high_resolution_clock::time_point endTime = chrono::high_resolution_clock::now();
+    chrono::duration<float> time_span = chrono::duration_cast<chrono::duration<float>>(endTime - startingTime);
+    chronoTime = time_span.count() * 1000000.;
+
+    if (profile) {
+        cl_ulong start, end;
+
+        clGetEventProfilingInfo(timer_event, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &start, NULL);
+        clGetEventProfilingInfo(timer_event, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &end, NULL);
+
+        clTime = (float)(end - start) / 1000.;
     }
 }
