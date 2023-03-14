@@ -261,6 +261,7 @@ inline void addPath(
         if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) {
             atomic_inc(&count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]);
             particle->score += 1;
+            // particle->score += 1. / (1 + log(1. + count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]));
         }
 
         path[pathStart + i].y = -path[pathStart + i].y;
@@ -269,6 +270,7 @@ inline void addPath(
         if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) {
             atomic_inc(&count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]);
             particle->score += 1;
+            // particle->score += 1. / (1 + log(1. + count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]));
         }
     }
 
