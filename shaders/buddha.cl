@@ -557,3 +557,27 @@ __constant float IMAGE_MAX = 4294967295.0;
         }
     }
 }
+
+__kernel void updateDiff(
+    global unsigned int *count,
+    global unsigned int *prevCount,
+    global unsigned int *countDiff,
+    float alpha,
+    unsigned int thresholdCount
+) {
+    const int x = get_global_id(0);
+    const int y = get_global_id(1);
+
+    const int W = get_global_size(0);
+    const int H = get_global_size(1);
+
+    // count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]
+    unsigned int pixelCount = W * H;
+    unsigned int ind;
+
+    for (unsigned int i = 0; i < thresholdCount; i++) {
+        ind = i * pixelCount + W * y + x;
+        countDiff[ind] = countDiff[ind] * alpha + count[ind] - prevCount[ind];
+        prevCount[ind] = count[ind];
+    }
+}
