@@ -39,6 +39,8 @@ void createBufferSpecs() {
     bufferSpecs = {
         {"image",     {NULL, 3 * config->width * config->height * sizeof(uint32_t)}},
         {"count",     {NULL, 3 * config->width * config->height * sizeof(uint32_t)}},
+        {"prevCount", {NULL, 3 * config->width * config->height * sizeof(uint32_t)}},
+        {"countDiff", {NULL, 3 * config->width * config->height * sizeof(uint32_t)}},
         {"particles", {NULL, config->particle_count * sizeof(Particle)}},
         {"path",      {NULL, config->particle_count * config->thresholds[config->threshold_count - 1] * sizeof(FractalCoord)}},
         {"threshold", {NULL, config->threshold_count * sizeof(uint32_t)}},
@@ -78,7 +80,7 @@ void setKernelArgs() {
     opencl->setKernelBufferArg("mandelStep", 3, "path");
     opencl->setKernelBufferArg("mandelStep", 4, "randomState");
     opencl->setKernelBufferArg("mandelStep", 5, "randomIncrement");
-    opencl->setKernelArg("mandelStep", 6, sizeof(int), (void*)&(config->threshold_count));
+    opencl->setKernelArg("mandelStep", 6, sizeof(unsigned int), (void*)&(config->threshold_count));
     opencl->setKernelArg("mandelStep", 7, sizeof(ViewSettings), (void*)&viewFW);
     
     opencl->setKernelBufferArg("initParticles", 0, "particles");
@@ -86,7 +88,7 @@ void setKernelArgs() {
     opencl->setKernelBufferArg("initParticles", 2, "path");
     opencl->setKernelBufferArg("initParticles", 3, "randomState");
     opencl->setKernelBufferArg("initParticles", 4, "randomIncrement");
-    opencl->setKernelArg("initParticles", 5, sizeof(int), (void*)&(config->threshold_count));
+    opencl->setKernelArg("initParticles", 5, sizeof(unsigned int), (void*)&(config->threshold_count));
     
     opencl->setKernelBufferArg("resetCount", 0, "count");
     opencl->setKernelArg("resetCount", 1, sizeof(unsigned int), (void*)&(config->maximum_size));
@@ -102,7 +104,7 @@ void setKernelArgs() {
     opencl->setKernelBufferArg("renderImage", 0, "count");
     opencl->setKernelBufferArg("renderImage", 1, "maximum");
     opencl->setKernelBufferArg("renderImage", 2, "image");
-    opencl->setKernelArg("renderImage", 3, sizeof(int), (void*)&(config->threshold_count));
+    opencl->setKernelArg("renderImage", 3, sizeof(unsigned int), (void*)&(config->threshold_count));
 }
 
 void initPcg() {
