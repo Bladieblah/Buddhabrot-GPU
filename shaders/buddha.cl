@@ -205,7 +205,7 @@ __kernel void resetCount(global unsigned int *count, int size) {
 inline int matchThreshold(
     Particle particle,
     global unsigned int *threshold,
-    int thresholdCount
+    unsigned int thresholdCount
 ) {
     for (int i = 0; i < thresholdCount; i++) {
         if (particle.iterCount <= threshold[i]) {
@@ -247,7 +247,7 @@ inline void addPath(
     global float2 *path,
     global unsigned int *count,
     global unsigned int *threshold,
-    int thresholdCount,
+    unsigned int thresholdCount,
     unsigned int pathStart,
     int thresholdIndex,
     ViewSettings view
@@ -413,7 +413,7 @@ __kernel void initParticles(
     global float2 *path,
     global ulong *randomState,
     global ulong *randomIncrement,
-    int thresholdCount
+    unsigned int thresholdCount
 ) {
     const int x = get_global_id(0);
 
@@ -429,7 +429,7 @@ __kernel void mandelStep(
     global float2 *path,
     global ulong *randomState,
     global ulong *randomIncrement,
-    int thresholdCount,
+    unsigned int thresholdCount,
     ViewSettings view
 ) {
     const int x = get_global_id(0);
@@ -520,9 +520,6 @@ __kernel void findMax2(global unsigned int *maxima, global unsigned int *maximum
  */
 
 __constant float COLOR_SCHEME[4][3] = {
-    // {1., 0., 0.,},
-    // {0., 1., 0.,},
-    // {0., 0., 1.,},
     {0.2, 0.0, 0.4,},
     {0.0, 0.5, 0.6,},
     {0.8, 0.5, 0.0,},
@@ -535,7 +532,7 @@ __constant float IMAGE_MAX = 4294967295.0;
     global unsigned int *count,
     global unsigned int *maximum,
     global unsigned int *image,
-    int thresholdCount
+    unsigned int thresholdCount
 ) {
     const int x = get_global_id(0);
     const int y = get_global_id(1);
@@ -558,5 +555,29 @@ __constant float IMAGE_MAX = 4294967295.0;
         if (image[imageOffset + j] >= 4294967295) {
            image[imageOffset + j] = 4294967295;
         }
+    }
+}
+
+__kernel void updateDiff(
+    global unsigned int *count,
+    global unsigned int *prevCount,
+    global unsigned int *countDiff,
+    float alpha,
+    unsigned int thresholdCount
+) {
+    const int x = get_global_id(0);
+    const int y = get_global_id(1);
+
+    const int W = get_global_size(0);
+    const int H = get_global_size(1);
+
+    // count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]
+    unsigned int pixelCount = W * H;
+    unsigned int ind;
+
+    for (unsigned int i = 0; i < thresholdCount; i++) {
+        ind = i * pixelCount + W * y + x;
+        countDiff[ind] = countDiff[ind] * alpha + count[ind] - prevCount[ind];
+        prevCount[ind] = count[ind];
     }
 }

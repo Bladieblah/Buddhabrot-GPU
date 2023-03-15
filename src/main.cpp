@@ -39,6 +39,8 @@ void createBufferSpecs() {
     bufferSpecs = {
         {"image",     {NULL, 3 * config->width * config->height * sizeof(uint32_t)}},
         {"count",     {NULL, 3 * config->width * config->height * sizeof(uint32_t)}},
+        {"prevCount", {NULL, 3 * config->width * config->height * sizeof(uint32_t)}},
+        {"countDiff", {NULL, 3 * config->width * config->height * sizeof(uint32_t)}},
         {"particles", {NULL, config->particle_count * sizeof(Particle)}},
         {"path",      {NULL, config->particle_count * config->thresholds[config->threshold_count - 1] * sizeof(FractalCoord)}},
         {"threshold", {NULL, config->threshold_count * sizeof(uint32_t)}},
@@ -62,7 +64,10 @@ void createKernelSpecs() {
         {"resetCount",    {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {120, 0}, "resetCount"}},
         {"findMax1",      {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {120, 0}, "findMax1"}},
         {"findMax2",      {NULL, 1, {config->threshold_count, 0}, {config->threshold_count, 0}, "findMax2"}},
+        {"findMaxDiff",   {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {120, 0}, "findMax1"}},
         {"renderImage",   {NULL, 2, {config->width, config->height}, {16, 16}, "renderImage"}},
+        {"renderImageD",  {NULL, 2, {config->width, config->height}, {16, 16}, "renderImage"}},
+        {"updateDiff",    {NULL, 2, {config->width, config->height}, {16, 16}, "updateDiff"}},
     };
 }
 
@@ -78,7 +83,7 @@ void setKernelArgs() {
     opencl->setKernelBufferArg("mandelStep", 3, "path");
     opencl->setKernelBufferArg("mandelStep", 4, "randomState");
     opencl->setKernelBufferArg("mandelStep", 5, "randomIncrement");
-    opencl->setKernelArg("mandelStep", 6, sizeof(int), (void*)&(config->threshold_count));
+    opencl->setKernelArg("mandelStep", 6, sizeof(unsigned int), (void*)&(config->threshold_count));
     opencl->setKernelArg("mandelStep", 7, sizeof(ViewSettings), (void*)&viewFW);
     
     opencl->setKernelBufferArg("initParticles", 0, "particles");
@@ -86,7 +91,7 @@ void setKernelArgs() {
     opencl->setKernelBufferArg("initParticles", 2, "path");
     opencl->setKernelBufferArg("initParticles", 3, "randomState");
     opencl->setKernelBufferArg("initParticles", 4, "randomIncrement");
-    opencl->setKernelArg("initParticles", 5, sizeof(int), (void*)&(config->threshold_count));
+    opencl->setKernelArg("initParticles", 5, sizeof(unsigned int), (void*)&(config->threshold_count));
     
     opencl->setKernelBufferArg("resetCount", 0, "count");
     opencl->setKernelArg("resetCount", 1, sizeof(unsigned int), (void*)&(config->maximum_size));
@@ -98,11 +103,26 @@ void setKernelArgs() {
     opencl->setKernelBufferArg("findMax2", 0, "maxima");
     opencl->setKernelBufferArg("findMax2", 1, "maximum");
     opencl->setKernelArg("findMax2", 2, sizeof(unsigned int), (void*)&maximaKernelSize);
+
+    opencl->setKernelBufferArg("findMaxDiff", 0, "countDiff");
+    opencl->setKernelBufferArg("findMaxDiff", 1, "maxima");
+    opencl->setKernelArg("findMaxDiff", 2, sizeof(unsigned int), (void*)&(config->maximum_size));
     
     opencl->setKernelBufferArg("renderImage", 0, "count");
     opencl->setKernelBufferArg("renderImage", 1, "maximum");
     opencl->setKernelBufferArg("renderImage", 2, "image");
-    opencl->setKernelArg("renderImage", 3, sizeof(int), (void*)&(config->threshold_count));
+    opencl->setKernelArg("renderImage", 3, sizeof(unsigned int), (void*)&(config->threshold_count));
+    
+    opencl->setKernelBufferArg("renderImageD", 0, "countDiff");
+    opencl->setKernelBufferArg("renderImageD", 1, "maximum");
+    opencl->setKernelBufferArg("renderImageD", 2, "image");
+    opencl->setKernelArg("renderImageD", 3, sizeof(unsigned int), (void*)&(config->threshold_count));
+    
+    opencl->setKernelBufferArg("updateDiff", 0, "count");
+    opencl->setKernelBufferArg("updateDiff", 1, "prevCount");
+    opencl->setKernelBufferArg("updateDiff", 2, "countDiff");
+    opencl->setKernelArg("updateDiff", 3, sizeof(float), (void*)&(config->alpha));
+    opencl->setKernelArg("updateDiff", 4, sizeof(unsigned int), (void*)&(config->threshold_count));
 }
 
 void initPcg() {
@@ -161,32 +181,34 @@ void prepare() {
 
 void display() {
     frameCount++;
+    opencl->startFrame();
 
     if (frameCount % 2 == 0) {
         return;
     }
     
     displayFW();
-    
-    // uint32_t m[config->threshold_count];
-    // opencl->readBuffer("maximum", m);
-    // fprintf(stderr, "maxs = (%d, %d, %d)\n", m[0], m[1], m[2]);
 
     opencl->step("mandelStep", config->frame_steps);
-    opencl->step("findMax1");
-    opencl->step("findMax2");
-    opencl->step("renderImage");
+    opencl->step("updateDiff");
+
+    if (settingsFW.showDiff) {
+        opencl->step("findMaxDiff");
+        opencl->step("findMax2");
+        opencl->step("renderImageD");
+    } else {
+        opencl->step("findMax1");
+        opencl->step("findMax2");
+        opencl->step("renderImage");
+    }
+
     opencl->readBuffer("image", pixelsFW);
 
 
     chrono::high_resolution_clock::time_point temp = chrono::high_resolution_clock::now();
     chrono::duration<float> time_span = chrono::duration_cast<chrono::duration<float>>(temp - frameTime);
     fprintf(stderr, "Step = %d, time = %.4g            \n", frameCount / 2, time_span.count());
-    if (config->verbose) {
-        fprintf(stderr, "\x1b[5A");
-    } else {
-        fprintf(stderr, "\x1b[1A");
-    }
+    fprintf(stderr, "\x1b[%dA", opencl->printCount + 1);
     frameTime = temp; 
 }
 
@@ -213,15 +235,6 @@ int main(int argc, char **argv) {
     prepare();
 
     atexit(&cleanAll);
-
-    // opencl->step("mandelStep", 10 * config->frame_steps);
-    // opencl->step("findMax1");
-    // opencl->step("findMax2");
-    // opencl->step("renderImage");
-    // opencl->readBuffer("image", pixelsFW);
-    // fprintf(stderr, "\x1b[6A");
-
-
 
     glutInit(&argc, argv);
     createFractalWindow("Fractal Window", config->width, config->height);

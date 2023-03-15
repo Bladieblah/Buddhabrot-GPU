@@ -17,6 +17,7 @@ typedef struct WindowSettings {
     float zoom = 1, centerX = 0, centerY = 0;
     bool grid = false;
     bool showParticles = false;
+    bool showDiff = false;
 } WindowSettings;
 
 typedef struct MouseState {
@@ -38,6 +39,7 @@ void createFractalWindow(char *name, uint32_t width, uint32_t height);
 void destroyFractalWindow();
 
 extern ViewSettings viewFW, defaultView;
+extern WindowSettings settingsFW;
 extern uint32_t *pixelsFW;
 extern OpenCl *opencl;
 extern Config *config;
