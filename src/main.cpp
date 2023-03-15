@@ -181,16 +181,13 @@ void prepare() {
 
 void display() {
     frameCount++;
+    opencl->startFrame();
 
     if (frameCount % 2 == 0) {
         return;
     }
     
     displayFW();
-    
-    // uint32_t m[config->threshold_count];
-    // opencl->readBuffer("maximum", m);
-    // fprintf(stderr, "maxs = (%d, %d, %d)\n", m[0], m[1], m[2]);
 
     opencl->step("mandelStep", config->frame_steps);
     opencl->step("updateDiff");
@@ -211,11 +208,7 @@ void display() {
     chrono::high_resolution_clock::time_point temp = chrono::high_resolution_clock::now();
     chrono::duration<float> time_span = chrono::duration_cast<chrono::duration<float>>(temp - frameTime);
     fprintf(stderr, "Step = %d, time = %.4g            \n", frameCount / 2, time_span.count());
-    if (config->verbose) {
-        fprintf(stderr, "\x1b[5A");
-    } else {
-        fprintf(stderr, "\x1b[1A");
-    }
+    fprintf(stderr, "\x1b[%dA", opencl->printCount + 1);
     frameTime = temp; 
 }
 
@@ -242,15 +235,6 @@ int main(int argc, char **argv) {
     prepare();
 
     atexit(&cleanAll);
-
-    // opencl->step("mandelStep", 10 * config->frame_steps);
-    // opencl->step("findMax1");
-    // opencl->step("findMax2");
-    // opencl->step("renderImage");
-    // opencl->readBuffer("image", pixelsFW);
-    // fprintf(stderr, "\x1b[6A");
-
-
 
     glutInit(&argc, argv);
     createFractalWindow("Fractal Window", config->width, config->height);

@@ -63,6 +63,7 @@ public:
 
     void startTimer();
     void getTime();
+    void startFrame();
 
     cl_platform_id *platform_ids;
     cl_platform_id platform_id;
@@ -93,6 +94,7 @@ public:
     std::chrono::high_resolution_clock::time_point startingTime;
 
     float chronoTime = 0, clTime = 0;
+    unsigned printCount = 0;
 };
 
 
