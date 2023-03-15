@@ -64,7 +64,10 @@ void createKernelSpecs() {
         {"resetCount",    {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {120, 0}, "resetCount"}},
         {"findMax1",      {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {120, 0}, "findMax1"}},
         {"findMax2",      {NULL, 1, {config->threshold_count, 0}, {config->threshold_count, 0}, "findMax2"}},
+        {"findMaxDiff",   {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {120, 0}, "findMax1"}},
         {"renderImage",   {NULL, 2, {config->width, config->height}, {16, 16}, "renderImage"}},
+        {"renderImageD",  {NULL, 2, {config->width, config->height}, {16, 16}, "renderImage"}},
+        {"updateDiff",    {NULL, 2, {config->width, config->height}, {16, 16}, "updateDiff"}},
     };
 }
 
@@ -100,11 +103,26 @@ void setKernelArgs() {
     opencl->setKernelBufferArg("findMax2", 0, "maxima");
     opencl->setKernelBufferArg("findMax2", 1, "maximum");
     opencl->setKernelArg("findMax2", 2, sizeof(unsigned int), (void*)&maximaKernelSize);
+
+    opencl->setKernelBufferArg("findMaxDiff", 0, "countDiff");
+    opencl->setKernelBufferArg("findMaxDiff", 1, "maxima");
+    opencl->setKernelArg("findMaxDiff", 2, sizeof(unsigned int), (void*)&(config->maximum_size));
     
     opencl->setKernelBufferArg("renderImage", 0, "count");
     opencl->setKernelBufferArg("renderImage", 1, "maximum");
     opencl->setKernelBufferArg("renderImage", 2, "image");
     opencl->setKernelArg("renderImage", 3, sizeof(unsigned int), (void*)&(config->threshold_count));
+    
+    opencl->setKernelBufferArg("renderImageD", 0, "countDiff");
+    opencl->setKernelBufferArg("renderImageD", 1, "maximum");
+    opencl->setKernelBufferArg("renderImageD", 2, "image");
+    opencl->setKernelArg("renderImageD", 3, sizeof(unsigned int), (void*)&(config->threshold_count));
+    
+    opencl->setKernelBufferArg("updateDiff", 0, "count");
+    opencl->setKernelBufferArg("updateDiff", 1, "prevCount");
+    opencl->setKernelBufferArg("updateDiff", 2, "countDiff");
+    opencl->setKernelArg("updateDiff", 3, sizeof(float), (void*)&(config->alpha));
+    opencl->setKernelArg("updateDiff", 4, sizeof(unsigned int), (void*)&(config->threshold_count));
 }
 
 void initPcg() {
@@ -175,9 +193,18 @@ void display() {
     // fprintf(stderr, "maxs = (%d, %d, %d)\n", m[0], m[1], m[2]);
 
     opencl->step("mandelStep", config->frame_steps);
-    opencl->step("findMax1");
-    opencl->step("findMax2");
-    opencl->step("renderImage");
+    opencl->step("updateDiff");
+
+    if (settingsFW.showDiff) {
+        opencl->step("findMaxDiff");
+        opencl->step("findMax2");
+        opencl->step("renderImageD");
+    } else {
+        opencl->step("findMax1");
+        opencl->step("findMax2");
+        opencl->step("renderImage");
+    }
+
     opencl->readBuffer("image", pixelsFW);
 
 

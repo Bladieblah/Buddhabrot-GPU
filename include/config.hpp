@@ -24,6 +24,8 @@ public:
     bool profile = true;
     bool verbose = true;
 
+    float alpha = 0.8;
+
     Config(char *filename);
     void printValues();
 
@@ -49,6 +51,8 @@ private:
         {"frame_steps", {'i', (void *)&frame_steps}},
         {"profile", {'b', (void *)&profile}},
         {"verbose", {'b', (void *)&verbose}},
+        
+        {"alpha", {'f', (void *)&alpha}},
     };
 };
 

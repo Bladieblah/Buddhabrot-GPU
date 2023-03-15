@@ -236,6 +236,9 @@ void keyPressedFW(unsigned char key, int x, int y) {
         case 'g':
             settingsFW.grid = ! settingsFW.grid;
             break;
+        case 'd':
+            settingsFW.showDiff = ! settingsFW.showDiff;
+            break;
         case 'b':
             selecting = ! selecting;
             break;
