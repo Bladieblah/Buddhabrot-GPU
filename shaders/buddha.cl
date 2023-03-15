@@ -315,18 +315,18 @@ inline bool isValid(float2 coord) {
     }
 
     // 3-step bulbs
-    if (cnorm2(coord - CENTER_2) < RADIUS_3) {
+    if (cnorm(coord - CENTER_2) < RADIUS_3) {
         return false;
     }
-    if (cnorm2(coord - CENTER_3) < RADIUS_3) {
+    if (cnorm(coord - CENTER_3) < RADIUS_3) {
         return false;
     }
 
     // 4-step bulbs
-    if (cnorm2(coord - CENTER_4) < RADIUS_4) {
+    if (cnorm(coord - CENTER_4) < RADIUS_4) {
         return false;
     }
-    if (cnorm2(coord - CENTER_5) < RADIUS_5) {
+    if (cnorm(coord - CENTER_5) < RADIUS_5) {
         return false;
     }
 
@@ -342,6 +342,7 @@ inline float2 getNewPos(
         (9. * uniformRand(randomState, randomIncrement, x) - 5.2),
         (6. * uniformRand(randomState, randomIncrement, x) - 3.)
     );
+    // return newOffset;
 
     for (int i = 0; i < 50; i++) {
         if (isValid(newOffset)) {
