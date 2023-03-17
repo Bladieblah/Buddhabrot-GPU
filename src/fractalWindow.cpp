@@ -97,14 +97,14 @@ void drawPath() {
         2 * fractal.toPixel(defaultView).y / (float)viewFW.sizeY - 1
     );
 
-    for (int i = 0; i < 200; i++) {
+    for (int i = 0; i < 20000; i++) {
         float tmp = 2 * fractal.x * fractal.y + offset.y;
         fractal.x = fractal.x * fractal.x - fractal.y * fractal.y + offset.x;
         fractal.y = tmp;
 
         glVertex2f(
-            2 * fractal.toPixel(defaultView).x / (float)viewFW.sizeX - 1,
-            2 * fractal.toPixel(defaultView).y / (float)viewFW.sizeY - 1
+            2 * fractal.toPixel(defaultView).toScreen(settingsFW).x / (float)viewFW.sizeX - 1,
+            2 * fractal.toPixel(defaultView).toScreen(settingsFW).y / (float)viewFW.sizeY - 1
         );
 
         if ((fractal.x * fractal.x + fractal.y * fractal.y) > 16) {
