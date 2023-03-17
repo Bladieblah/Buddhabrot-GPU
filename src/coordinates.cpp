@@ -36,6 +36,26 @@ FractalCoordinate PixelCoordinate::toFractal(ViewSettings view) {
     };
 }
 
+FractalCoordinate complex_mul(FractalCoordinate f1, FractalCoordinate f2) {
+    return {f1.x * f2.x - f1.y * f2.y, f1.x * f2.y + f1.y * f2.x};
+}
+
+FractalCoordinate complex_square(FractalCoordinate f) {
+    return {f.x * f.x - f.y * f.y, 2 * f.x * f.y};
+}
+
+FractalCoordinate operator+(FractalCoordinate f1, FractalCoordinate f2) {
+    return {f1.x + f2.x, f1.y + f2.y};
+}
+
+FractalCoordinate operator*(float x, FractalCoordinate f) {
+    return {x * f.x, x * f.y};
+}
+
+FractalCoordinate operator*(FractalCoordinate f, float x) {
+    return {x * f.x, x * f.y};
+}
+
 ScreenCoordinate PixelCoordinate::toScreen(WindowSettings settings) {
     return (ScreenCoordinate) {
         (int)((x / (float)settings.width  - settings.centerX) * settings.zoom * settings.windowW),

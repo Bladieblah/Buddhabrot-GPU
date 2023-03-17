@@ -82,12 +82,11 @@ void drawBox() {
 void drawPath() {
     ScreenCoordinate screen({mouseFW.x, mouseFW.y});
     FractalCoordinate fractal = screen.toPixel(settingsFW).toFractal(defaultView);
-    FractalCoordinate dx({1, 0});
-    FractalCoordinate dy({0, 1});
+    FractalCoordinate dzx({1, 0});
+    FractalCoordinate dzy({0, 1});
     FractalCoordinate offset(fractal);
     
-    glPointSize(5);
-    glColor3f(1, 0, 1);
+    glPointSize(10);
     glEnable(GL_POINT_SMOOTH);
     
     glBegin(GL_POINTS);
@@ -98,12 +97,26 @@ void drawPath() {
     );
 
     for (int i = 0; i < 20000; i++) {
-        
+        dzx = 2 * complex_mul(fractal, dzx) + FractalCoordinate({1, 0});
+        dzy = 2 * complex_mul(fractal, dzy) + FractalCoordinate({0, 1});
         fractal = complex_square(fractal) + offset;
 
+        glColor3f(1, 0, 1);
         glVertex2f(
             2 * fractal.toPixel(defaultView).toScreen(settingsFW).x / (float)viewFW.sizeX - 1,
             2 * fractal.toPixel(defaultView).toScreen(settingsFW).y / (float)viewFW.sizeY - 1
+        );
+
+        glColor3f(1, 0, 0);
+        glVertex2f(
+            2 * (fractal + 0.1 * dzx).toPixel(defaultView).toScreen(settingsFW).x / (float)viewFW.sizeX - 1,
+            2 * (fractal + 0.1 * dzx).toPixel(defaultView).toScreen(settingsFW).y / (float)viewFW.sizeY - 1
+        );
+
+        glColor3f(0, 1, 1);
+        glVertex2f(
+            2 * (fractal + 0.1 * dzy).toPixel(defaultView).toScreen(settingsFW).x / (float)viewFW.sizeX - 1,
+            2 * (fractal + 0.1 * dzy).toPixel(defaultView).toScreen(settingsFW).y / (float)viewFW.sizeY - 1
         );
 
         if ((fractal.x * fractal.x + fractal.y * fractal.y) > 16) {
