@@ -588,7 +588,7 @@ __kernel void updateDiff(
     }
 }
 
-__kernel void crosspollinate(
+__kernel void crossPollinate(
     global Particle *particles,
     global float2 *path,
     global unsigned int *thresholds,
@@ -613,11 +613,11 @@ __kernel void crosspollinate(
         );
 
         particles[x].pos = newOffset;
-        particles[x].prevOffset = newOffset;
+        // particles[x].prevOffset = newOffset;
         particles[x].offset = newOffset;
         particles[x].iterCount = 1;
         particles[x].score = 0;
-        particles[x].prevScore = particles[y].prevScore;
+        // particles[x].prevScore = particles[y].prevScore;
 
         path[pathIndex] = newOffset;
     }

@@ -58,16 +58,17 @@ void createBufferSpecs() {
 vector<KernelSpec> kernelSpecs;
 void createKernelSpecs() {
     kernelSpecs = {
-        {"seedNoise",     {NULL, 1, {config->particle_count, 0}, {128, 0}, "seedNoise"}},
-        {"initParticles", {NULL, 1, {config->particle_count, 0}, {128, 0}, "initParticles"}},
-        {"mandelStep",    {NULL, 1, {config->particle_count, 0}, {128, 0}, "mandelStep"}},
-        {"resetCount",    {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {120, 0}, "resetCount"}},
-        {"findMax1",      {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {120, 0}, "findMax1"}},
-        {"findMax2",      {NULL, 1, {config->threshold_count, 0}, {config->threshold_count, 0}, "findMax2"}},
-        {"findMaxDiff",   {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {120, 0}, "findMax1"}},
-        {"renderImage",   {NULL, 2, {config->width, config->height}, {16, 16}, "renderImage"}},
-        {"renderImageD",  {NULL, 2, {config->width, config->height}, {16, 16}, "renderImage"}},
-        {"updateDiff",    {NULL, 2, {config->width, config->height}, {16, 16}, "updateDiff"}},
+        {"seedNoise",      {NULL, 1, {config->particle_count, 0}, {128, 0}, "seedNoise"}},
+        {"initParticles",  {NULL, 1, {config->particle_count, 0}, {128, 0}, "initParticles"}},
+        {"mandelStep",     {NULL, 1, {config->particle_count, 0}, {128, 0}, "mandelStep"}},
+        {"crossPollinate", {NULL, 1, {config->particle_count, 0}, {128, 0}, "crossPollinate"}},
+        {"resetCount",     {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {120, 0}, "resetCount"}},
+        {"findMax1",       {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {120, 0}, "findMax1"}},
+        {"findMax2",       {NULL, 1, {config->threshold_count, 0}, {config->threshold_count, 0}, "findMax2"}},
+        {"findMaxDiff",    {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {120, 0}, "findMax1"}},
+        {"renderImage",    {NULL, 2, {config->width, config->height}, {16, 16}, "renderImage"}},
+        {"renderImageD",   {NULL, 2, {config->width, config->height}, {16, 16}, "renderImage"}},
+        {"updateDiff",     {NULL, 2, {config->width, config->height}, {16, 16}, "updateDiff"}},
     };
 }
 
@@ -123,6 +124,14 @@ void setKernelArgs() {
     opencl->setKernelBufferArg("updateDiff", 2, "countDiff");
     opencl->setKernelArg("updateDiff", 3, sizeof(float), (void*)&(config->alpha));
     opencl->setKernelArg("updateDiff", 4, sizeof(unsigned int), (void*)&(config->threshold_count));
+    
+    opencl->setKernelBufferArg("crossPollinate", 0, "particles");
+    opencl->setKernelBufferArg("crossPollinate", 1, "path");
+    opencl->setKernelBufferArg("crossPollinate", 2, "threshold");
+    opencl->setKernelBufferArg("crossPollinate", 3, "randomState");
+    opencl->setKernelBufferArg("crossPollinate", 4, "randomIncrement");
+    opencl->setKernelArg("crossPollinate", 5, sizeof(unsigned int), (void*)&(config->threshold_count));
+    opencl->setKernelArg("crossPollinate", 6, sizeof(ViewSettings), (void*)&viewFW);
 }
 
 void initPcg() {
@@ -202,6 +211,7 @@ void display() {
         opencl->step("renderImage");
     }
 
+    opencl->step("crossPollinate");
     opencl->readBuffer("image", pixelsFW);
 
 
