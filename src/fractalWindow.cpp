@@ -44,8 +44,6 @@ void showParticles() {
         );
 
     }
-
-    // fprintf(stderr, "\n");
 }
 
 void drawGrid() {
@@ -84,6 +82,8 @@ void drawBox() {
 void drawPath() {
     ScreenCoordinate screen({mouseFW.x, mouseFW.y});
     FractalCoordinate fractal = screen.toPixel(settingsFW).toFractal(defaultView);
+    FractalCoordinate dx({1, 0});
+    FractalCoordinate dy({0, 1});
     FractalCoordinate offset(fractal);
     
     glPointSize(5);
@@ -98,9 +98,8 @@ void drawPath() {
     );
 
     for (int i = 0; i < 20000; i++) {
-        float tmp = 2 * fractal.x * fractal.y + offset.y;
-        fractal.x = fractal.x * fractal.x - fractal.y * fractal.y + offset.x;
-        fractal.y = tmp;
+        
+        fractal = complex_square(fractal) + offset;
 
         glVertex2f(
             2 * fractal.toPixel(defaultView).toScreen(settingsFW).x / (float)viewFW.sizeX - 1,
