@@ -604,25 +604,26 @@ __kernel void crossPollinate(
     const unsigned int pathIndex = x * maxLength;
     const int y = randint(randomState, randomIncrement, x, nParticles);
 
-    if (particles[y].prevScore < 10) {
+    if (particles[x].prevScore > 10 || particles[y].prevScore < 10) {
         return;
     }
 
     float threshold = (particles[y].prevScore / (particles[x].prevScore + 1) - 5) * 0.2;
 
     if (uniformRand(randomState, randomIncrement, x) < threshold) {
-        float2 newOffset = (float2)(
-            particles[y].prevOffset.x + 0.01 * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5., 5.),
-            particles[y].prevOffset.y + 0.01 * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5., 5.)
-        );
+        particles[x] = Particle(particles[y]);
+        // float2 newOffset = (float2)(
+        //     particles[y].prevOffset.x + 0.01 * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5., 5.),
+        //     particles[y].prevOffset.y + 0.01 * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5., 5.)
+        // );
 
-        particles[x].pos = newOffset;
+        particles[x].pos = particles[x].offset;
         // particles[x].prevOffset = newOffset;
-        particles[x].offset = newOffset;
+        // particles[x].offset = newOffset;
         particles[x].iterCount = 1;
-        particles[x].score = 0;
+        // particles[x].score = 0;
         // particles[x].prevScore = 0.5 * (particles[y].prevScore + particles[x].prevScore);
 
-        path[pathIndex] = newOffset;
+        path[pathIndex] = particles[x].offset;
     }
 }
