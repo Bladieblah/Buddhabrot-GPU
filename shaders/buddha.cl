@@ -270,7 +270,7 @@ inline void addPath(
         if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) {
             atomic_inc(&count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]);
             // particle->score += 1;
-            particle->score += 1. / (1 + log(1. + count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]));
+            particle->score += 1. / (1 + sqrt(1. + count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]));
         }
 
         path[pathStart + i].y = -path[pathStart + i].y;
@@ -279,7 +279,7 @@ inline void addPath(
         if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) {
             atomic_inc(&count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]);
             // particle->score += 1;
-            particle->score += 1. / (1 + log(1. + count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]));
+            particle->score += 1. / (1 + sqrt(1. + count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]));
         }
     }
 
@@ -604,6 +604,10 @@ __kernel void crossPollinate(
     const unsigned int pathIndex = x * maxLength;
     const int y = randint(randomState, randomIncrement, x, nParticles);
 
+    if (particles[y].prevScore < 10) {
+        return;
+    }
+
     float threshold = (particles[y].prevScore / (particles[x].prevScore + 1) - 5) * 0.2;
 
     if (uniformRand(randomState, randomIncrement, x) < threshold) {
@@ -617,7 +621,7 @@ __kernel void crossPollinate(
         particles[x].offset = newOffset;
         particles[x].iterCount = 1;
         particles[x].score = 0;
-        // particles[x].prevScore = particles[y].prevScore;
+        // particles[x].prevScore = 0.5 * (particles[y].prevScore + particles[x].prevScore);
 
         path[pathIndex] = newOffset;
     }
