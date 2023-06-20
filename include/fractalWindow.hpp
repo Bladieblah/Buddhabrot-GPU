@@ -24,7 +24,7 @@ typedef struct WindowSettings {
 typedef struct MouseState {
     int xDown, yDown;
     int x, y;
-    int state;
+    int state = 1; // GLUT_UP
 } MouseState;
 
 typedef struct ViewSettings {

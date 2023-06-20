@@ -289,6 +289,7 @@ void keyPressedFW(unsigned char key, int x, int y) {
     switch (key) {
         case 'a':
             selectRegion();
+            iterCount = 0;
             break;
         case 'e':
             glutSetWindow(windowIdFW);
@@ -319,6 +320,7 @@ void keyPressedFW(unsigned char key, int x, int y) {
                 opencl->setKernelArg("mandelStep", 7, sizeof(ViewSettings), (void*)&viewFW);
                 opencl->step("resetCount");
                 opencl->step("initParticles");
+                iterCount = 0;
             }
             break;
 
@@ -337,6 +339,7 @@ void keyPressedFW(unsigned char key, int x, int y) {
             break;
         case 'R':
             opencl->step("resetCount");
+            iterCount = 0;
         case 'i':
             opencl->step("initParticles");
             break;
@@ -396,7 +399,6 @@ void mousePressedFW(int button, int state, int x, int y) {
 }
 
 void mouseMovedFW(int x, int y) {
-    ImGuiIO& io = ImGui::GetIO();
     ImGui_ImplGLUT_MotionFunc(x, y);
 
     mouseFW.x = x;
@@ -447,6 +449,7 @@ void createFractalWindow(char *name, uint32_t width, uint32_t height) {
     glutSpecialFunc(&specialKeyPressedFW);
     glutMouseFunc(&mousePressedFW);
     glutMotionFunc(&mouseMovedFW);
+    glutPassiveMotionFunc(&mouseMovedFW);
     glutReshapeFunc(&onReshapeFW);
 }
 
