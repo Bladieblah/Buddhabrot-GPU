@@ -20,8 +20,10 @@ using namespace std;
 Config *config;
 unsigned int maximaKernelSize;
 
-chrono::high_resolution_clock::time_point frameTime;
+chrono::high_resolution_clock::time_point timePoint;
 unsigned int frameCount = 0;
+float frameTime = 0;
+uint32_t iterCount = 0;
 
 typedef struct FractalCoord {
     cl_float2 pos;
@@ -217,12 +219,15 @@ void display() {
     
     opencl->readBuffer("image", pixelsFW);
 
+    iterCount++;
 
     chrono::high_resolution_clock::time_point temp = chrono::high_resolution_clock::now();
-    chrono::duration<float> time_span = chrono::duration_cast<chrono::duration<float>>(temp - frameTime);
-    fprintf(stderr, "Step = %d, time = %.4g            \n", frameCount / 2, time_span.count());
+    chrono::duration<float> time_span = chrono::duration_cast<chrono::duration<float>>(temp - timePoint);
+    frameTime = time_span.count();
+    
+    fprintf(stderr, "Step = %d, time = %.4g            \n", frameCount / 2, frameTime);
     fprintf(stderr, "\x1b[%dA", opencl->printCount + 1);
-    frameTime = temp; 
+    timePoint = temp;
 }
 
 void cleanAll() {
@@ -243,7 +248,7 @@ int main(int argc, char **argv) {
     }
 
     maximaKernelSize = (config->width * config->height / config->maximum_size);
-    frameTime = chrono::high_resolution_clock::now();
+    timePoint = chrono::high_resolution_clock::now();
 
     prepare();
 

@@ -45,4 +45,7 @@ extern uint32_t *pixelsFW;
 extern OpenCl *opencl;
 extern Config *config;
 
+extern float frameTime;
+extern uint32_t iterCount;
+
 #endif

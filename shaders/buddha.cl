@@ -581,7 +581,6 @@ __kernel void updateDiff(
     const int W = get_global_size(0);
     const int H = get_global_size(1);
 
-    // count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]
     unsigned int pixelCount = W * H;
     unsigned int ind;
 
