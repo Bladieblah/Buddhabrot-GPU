@@ -211,7 +211,10 @@ void display() {
         opencl->step("renderImage");
     }
 
-    opencl->step("crossPollinate", 1);
+    if (settingsFW.crossPollinate) {
+        opencl->step("crossPollinate", 1);
+    }
+    
     opencl->readBuffer("image", pixelsFW);
 
 

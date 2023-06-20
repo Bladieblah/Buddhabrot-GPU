@@ -18,6 +18,12 @@ struct FractalCoordinate {
     void rotate(float sinTheta, float cosTheta);
 };
 
+FractalCoordinate complex_mul(FractalCoordinate f1, FractalCoordinate f2);
+FractalCoordinate complex_square(FractalCoordinate f);
+FractalCoordinate operator+(FractalCoordinate f1, FractalCoordinate f2);
+FractalCoordinate operator*(float x, FractalCoordinate f);
+FractalCoordinate operator*(FractalCoordinate f, float x);
+
 /**
  * Coordinates in the pixel array that is drawn to the screen.
  */

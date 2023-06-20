@@ -18,6 +18,7 @@ typedef struct WindowSettings {
     bool grid = false;
     bool showParticles = false;
     bool showDiff = false;
+    bool crossPollinate = false;
 } WindowSettings;
 
 typedef struct MouseState {
