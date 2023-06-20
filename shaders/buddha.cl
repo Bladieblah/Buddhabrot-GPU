@@ -153,7 +153,7 @@ inline float gaussianRand(
  * Coordinate transformations
  */
 
- typedef struct ViewSettings {
+typedef struct ViewSettings {
     float scaleX, scaleY;
     float centerX, centerY;
     float theta, sinTheta, cosTheta;
@@ -216,74 +216,13 @@ inline int matchThreshold(
     global unsigned int *threshold,
     unsigned int thresholdCount
 ) {
-    for (int i = 0; i < thresholdCount; i++) {
+    for (uint i = 0; i < thresholdCount; i++) {
         if (particle.iterCount <= threshold[i]) {
             return i;
         }
     }
 
     return -1;
-}
-
-inline int getScore(
-    Particle *particle,
-    global float2 *path,
-    unsigned int pathStart,
-    ViewSettings view
-) {
-    int score = 0;
-    
-    for (unsigned int i = 0; i < particle->iterCount; i++) {
-        int2 pixel = fractalToPixel(path[pathStart + i], view);
-
-        if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) {
-            score += 1;
-        }
-
-        path[pathStart + i].y = -path[pathStart + i].y;
-        pixel = fractalToPixel(path[pathStart + i], view);
-
-        if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) {
-            score += 1;
-        }
-    }
-
-    return score;
-}
-
-inline void addPath(
-    Particle *particle,
-    global float2 *path,
-    global unsigned int *count,
-    global unsigned int *threshold,
-    unsigned int thresholdCount,
-    unsigned int pathStart,
-    int thresholdIndex,
-    ViewSettings view
-) {
-    unsigned int pixelCount = view.sizeX * view.sizeY;
-    // float deltaScore = 1. / (float)particle->iterCount;
-    
-    for (unsigned int i = 0; i < particle->iterCount; i++) {
-        int2 pixel = fractalToPixel(path[pathStart + i], view);
-
-        if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) {
-            atomic_inc(&count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]);
-            // particle->score += 1;
-            particle->score += 1. / (1 + sqrt(1. + count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]));
-        }
-
-        path[pathStart + i].y = -path[pathStart + i].y;
-        pixel = fractalToPixel(path[pathStart + i], view);
-
-        if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) {
-            atomic_inc(&count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]);
-            // particle->score += 1;
-            particle->score += 1. / (1 + sqrt(1. + count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]));
-        }
-    }
-
-    particle->score = pown(particle->score, 2);
 }
 
 constant float2 CENTER_1 = {-0.1225611668766536, 0.7448617666197446};
@@ -387,8 +326,71 @@ inline void resetParticle(
     path[pathStart] = newOffset;
 }
 
-constant unsigned int MAX_CONVERGE_STEPS = 500;
-constant float MAX_CONVERGE_STEP_SIZE =  0.02;
+inline int getScore(
+    Particle *particle,
+    global float2 *path,
+    unsigned int pathStart,
+    ViewSettings view
+) {
+    int score = 0;
+    
+    for (unsigned int i = 0; i < particle->iterCount; i++) {
+        int2 pixel = fractalToPixel(path[pathStart + i], view);
+
+        if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) {
+            score += 1;
+        }
+
+        path[pathStart + i].y = -path[pathStart + i].y;
+        pixel = fractalToPixel(path[pathStart + i], view);
+
+        if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) {
+            score += 1;
+        }
+    }
+
+    return score;
+}
+
+inline void addPath(
+    Particle *particle,
+    global float2 *path,
+    global unsigned int *count,
+    global unsigned int *threshold,
+    unsigned int thresholdCount,
+    unsigned int pathStart,
+    int thresholdIndex,
+    ViewSettings view
+) {
+    unsigned int pixelCount = view.sizeX * view.sizeY;
+    // float deltaScore = 1. / (float)particle->iterCount;
+    
+    for (unsigned int i = 0; i < particle->iterCount; i++) {
+        int2 pixel = fractalToPixel(path[pathStart + i], view);
+
+        if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) {
+            atomic_inc(&count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]);
+            // particle->score += 1;
+            // particle->score += 1. / (1 + sqrt(1. + count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]));
+            // particle->score += 1. / (1 + count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]);
+            particle->score += 1. / (1 + pown((float)count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x], 2));
+        }
+
+        path[pathStart + i].y = -path[pathStart + i].y;
+        pixel = fractalToPixel(path[pathStart + i], view);
+
+        if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) {
+            atomic_inc(&count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]);
+            // particle->score += 1;
+            // particle->score += 1. / (1 + sqrt(1. + count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]));
+            // particle->score += 1. / (1 + count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]);
+            particle->score += 1. / (1 + pown((float)count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x], 2));
+        }
+    }
+
+    // particle->score = pown(particle->score, 2);
+    // particle->score = pown(particle->score, 2) / threshold[thresholdIndex];
+}
 
 inline void mutateParticle(
     Particle *particle,
@@ -405,8 +407,8 @@ inline void mutateParticle(
     }
 
     float2 newOffset = (float2)(
-        particle->prevOffset.x + 0.01 * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5., 5.),
-        particle->prevOffset.y + 0.01 * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5., 5.)
+        particle->prevOffset.x + 0.01 * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f),// / (1 + particle->iterCount),
+        particle->prevOffset.y + 0.01 * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f)// / (1 + particle->iterCount)
     );
 
     particle->pos = newOffset;
@@ -431,6 +433,8 @@ __kernel void initParticles(
     resetParticle(&tmp, path, x * threshold[thresholdCount - 1], randomState, randomIncrement, x);
     particles[x] = tmp;
 }
+
+constant unsigned int MAX_CONVERGE_STEPS = 500;
 
 __kernel void mandelStep(
     global Particle *particles,
@@ -503,7 +507,7 @@ __kernel void findMax1(global unsigned int *count, global unsigned int *maxima, 
     const int x = get_global_id(0);
     maxima[x] = 0;
 
-    for (int i = x * size; i < (x + 1) * size; i++) {
+    for (unsigned int i = x * size; i < (x + 1) * size; i++) {
         if (count[i] > maxima[x]) {
             maxima[x] = count[i];
         }
@@ -514,7 +518,7 @@ __kernel void findMax2(global unsigned int *maxima, global unsigned int *maximum
     const int x = get_global_id(0);
     maximum[x] = 0;
 
-    for (int i = x * size; i < (x + 1) * size; i++) {
+    for (unsigned int i = x * size; i < (x + 1) * size; i++) {
         if (maxima[i] > maximum[x]) {
             maximum[x] = maxima[i];
         }
@@ -527,8 +531,8 @@ __kernel void findMax2(global unsigned int *maxima, global unsigned int *maximum
 
 __constant float COLOR_SCHEME[4][3] = {
     {0.2, 0.0, 0.4,},
-    {0.0, 0.5, 0.6,},
-    {0.8, 0.5, 0.0,},
+    {0.0, 0.4, 0.6,},
+    {0.8, 0.6, 0.0,},
     {0.1, 0.0, 0.2,},
 };
 
@@ -550,10 +554,10 @@ __constant float IMAGE_MAX = 4294967295.0;
     unsigned int pixelCount = W * H;
     const unsigned int imageOffset = 3 * pixelOffset;
 
-    for (int j = 0; j < 3; j++) {
+    for (uint j = 0; j < 3; j++) {
         image[imageOffset + j] = 0;
 
-        for (int i = 0; i < thresholdCount; i++) {
+        for (uint i = 0; i < thresholdCount; i++) {
             float countFraction = (float)count[i * pixelCount + pixelOffset] / (float)maximum[i];
             image[imageOffset + j] += (int)(COLOR_SCHEME[i][j] * sqrt(countFraction) * IMAGE_MAX);
         }

@@ -254,6 +254,9 @@ void keyPressedFW(unsigned char key, int x, int y) {
         case 'b':
             selecting = ! selecting;
             break;
+        case 'c':
+            settingsFW.crossPollinate = ! settingsFW.crossPollinate;
+            break;
         case 'r':
             settingsFW.zoom = 1.;
             settingsFW.centerX = 0.;
