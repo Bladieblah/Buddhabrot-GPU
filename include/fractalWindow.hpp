@@ -47,5 +47,6 @@ extern Config *config;
 
 extern float frameTime;
 extern uint32_t iterCount;
+extern uint64_t stepCount;
 
 #endif

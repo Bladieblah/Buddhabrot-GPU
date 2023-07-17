@@ -139,7 +139,8 @@ void showInfo() {
     ImGui::Text("scale = %.3g", viewFW.scaleY); ImGui::SameLine();
     ImGui::Text("theta = %.3f", viewFW.theta);
     ImGui::Text("Frametime = %.3f", frameTime);
-    ImGui::Text("Iterations = %d", iterCount);
+    ImGui::Text("Frames = %d", iterCount);
+    ImGui::Text("Steps = %llu M", stepCount / 1000000LLU);
 
     ScreenCoordinate screen({mouseFW.x, mouseFW.y});
     FractalCoordinate fractal = screen.toPixel(settingsFW).toFractal(viewFW);

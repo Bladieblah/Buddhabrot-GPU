@@ -24,6 +24,7 @@ chrono::high_resolution_clock::time_point timePoint;
 unsigned int frameCount = 0;
 float frameTime = 0;
 uint32_t iterCount = 0;
+uint64_t stepCount = 0;
 
 typedef struct FractalCoord {
     cl_float2 pos;
@@ -220,6 +221,7 @@ void display() {
     opencl->readBuffer("image", pixelsFW);
 
     iterCount++;
+    stepCount += config->frame_steps * config->particle_count * 800;
 
     chrono::high_resolution_clock::time_point temp = chrono::high_resolution_clock::now();
     chrono::duration<float> time_span = chrono::duration_cast<chrono::duration<float>>(temp - timePoint);
