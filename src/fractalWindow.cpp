@@ -15,6 +15,8 @@
 #include "fractalWindow.hpp"
 #include "opencl.hpp"
 
+using namespace std;
+
 int windowIdFW;
 uint32_t *pixelsFW;
 Particle *particles;
@@ -22,7 +24,7 @@ Particle *particles;
 WindowSettings settingsFW;
 MouseState mouseFW;
 ViewSettings viewFW, defaultView;
-std::stack<ViewSettings> viewStackFW;
+stack<ViewSettings> viewStackFW;
 bool selecting = true;
 
 void showParticles() {
@@ -262,7 +264,9 @@ void updateView(float scale, float centerX, float centerY, float theta) {
     viewFW.cosTheta = cos(theta);
     viewFW.sinTheta = sin(theta);
 
-    opencl->setKernelArg("mandelStep", 7, sizeof(ViewSettings), (void*)&viewFW);
+    for (string name : getMandelNames()) {
+        opencl->setKernelArg(name, 7, sizeof(ViewSettings), (void*)&viewFW);
+    }
 
     opencl->step("resetCount");
     opencl->step("initParticles");
@@ -318,7 +322,11 @@ void keyPressedFW(unsigned char key, int x, int y) {
             if (!viewStackFW.empty()) {
                 viewFW = viewStackFW.top();
                 viewStackFW.pop();
-                opencl->setKernelArg("mandelStep", 7, sizeof(ViewSettings), (void*)&viewFW);
+
+                for (string name : getMandelNames()) {
+                    opencl->setKernelArg("mandelStep", 7, sizeof(ViewSettings), (void*)&viewFW);
+                }
+                
                 opencl->step("resetCount");
                 opencl->step("initParticles");
                 iterCount = 0;

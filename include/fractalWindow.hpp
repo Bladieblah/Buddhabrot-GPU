@@ -49,4 +49,6 @@ extern float frameTime;
 extern uint32_t iterCount;
 extern uint64_t stepCount;
 
+extern std::vector<std::string> getMandelNames();
+
 #endif
