@@ -399,10 +399,15 @@ inline void mutateParticle(
         particle->prevOffset = particle->offset;
     }
 
-    float2 newOffset = (float2)(
-        particle->prevOffset.x + 0.01 * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f),// / (1 + particle->iterCount),
-        particle->prevOffset.y + 0.01 * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f)// / (1 + particle->iterCount)
-    );
+    float2 newOffset;
+    if (uniformRand(randomState, randomIncrement, x) < 0.95) {
+        newOffset = (float2)(
+            particle->prevOffset.x + 0.01 * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f),// / (1 + particle->iterCount),
+            particle->prevOffset.y + 0.01 * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f)// / (1 + particle->iterCount)
+        );
+    } else {
+        newOffset = getNewPos(randomState, randomIncrement, x);
+    }
 
     particle->pos = newOffset;
     particle->offset = newOffset;
@@ -475,7 +480,7 @@ __kernel void mandelStep_##PATH_EXT##_##SCORE_EXT( \
         } \
 \
         else if (tmp.iterCount >= maxLength) { \
-            mutateParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view); \
+            resetParticle(&tmp, path, pathIndex, randomState, randomIncrement, x); \
         } \
     } \
 \
@@ -558,7 +563,7 @@ __constant float IMAGE_MAX = 4294967295.0;
 
         for (uint i = 0; i < thresholdCount; i++) {
             float countFraction = (float)count[i * pixelCount + pixelOffset] / (float)maximum[i];
-            image[imageOffset + j] += (int)(COLOR_SCHEME[i][j] * cbrt(countFraction) * IMAGE_MAX);
+            image[imageOffset + j] += (int)(COLOR_SCHEME[i][j] * sqrt(countFraction) * IMAGE_MAX);
         }
 
         if (image[imageOffset + j] >= 4294967295) {
