@@ -384,13 +384,17 @@ inline void addPath_##EXTENSION( \
         } \
     } \
 }
-    // particle->score = pown(particle->score, 2);
-    // particle->score = pown(particle->score, 2) / threshold[thresholdIndex];
 
 PATH_DEF(constant, 1)
 PATH_DEF(sqrt, 1. / (1 + count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]))
 PATH_DEF(linear, 1. / (1 + sqrt(1. + count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x])))
 PATH_DEF(square, 1. / (1 + pown((float)count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x], 2)))
+
+#define SCORE_none
+#define SCORE_square tmp.score = pown(tmp.score, 2);
+#define SCORE_sqrt tmp.score = sqrt(tmp.score);
+#define SCORE_norm tmp.score = tmp.score / threshold[thresholdIndex];
+#define SCORE_sqnorm tmp.score = pown(tmp.score, 2) / threshold[thresholdIndex];
 
 inline void mutateParticle(
     Particle *particle,
@@ -442,51 +446,57 @@ constant unsigned int MAX_CONVERGE_STEPS = 500;
     path[pathIndex + tmp.iterCount] = tmp.pos; \
     tmp.iterCount++;
 
-// #define MANDEL_DEF(PATH_EXT)
-__kernel void mandelStep(
-    global Particle *particles,
-    global unsigned int *count,
-    global unsigned int *threshold,
-    global float2 *path,
-    global ulong *randomState,
-    global ulong *randomIncrement,
-    unsigned int thresholdCount,
-    ViewSettings view
-) {
-    const int x = get_global_id(0);
-    const unsigned int maxLength = threshold[thresholdCount - 1];
-    const unsigned int pathIndex = x * maxLength;
-
-    Particle tmp = particles[x];
-    bool escaped = false;
-
-    for (int i = 0; i < 800; i++) {
-        SUBSTEP SUBSTEP SUBSTEP SUBSTEP SUBSTEP
-
-        escaped = fabs(tmp.pos.x) > 4 || fabs(tmp.pos.y) > 4 || cnorm2(tmp.pos) > 16;
-
-        if (tmp.prevScore < 10 && (tmp.iterCount > MAX_CONVERGE_STEPS || escaped)) {
-            tmp.prevScore = getScore(&tmp, path, pathIndex, view);
-            if (tmp.prevScore < 10) {
-                tmp.prevOffset = tmp.offset;
-                tmp.pos = getNewPos(randomState, randomIncrement, x);
-                tmp.offset = tmp.pos;
-                tmp.iterCount = 1;
-                tmp.score = 0;
-            }
-        } if (escaped) {
-            int thresholdIndex = matchThreshold(tmp, threshold, thresholdCount);
-            addPath_sqrt(&tmp, path, count, threshold, thresholdCount, pathIndex, thresholdIndex, view);
-            mutateParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view);
-        }
-
-        else if (tmp.iterCount >= maxLength) {
-            mutateParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view);
-        }
-    }
-
-    particles[x] = tmp;
+#define MANDEL_DEF(PATH_EXT, SCORE_EXT) \
+__kernel void mandelStep_##PATH_EXT##_##SCORE_EXT( \
+    global Particle *particles, \
+    global unsigned int *count, \
+    global unsigned int *threshold, \
+    global float2 *path, \
+    global ulong *randomState, \
+    global ulong *randomIncrement, \
+    unsigned int thresholdCount, \
+    ViewSettings view \
+) { \
+    const int x = get_global_id(0); \
+    const unsigned int maxLength = threshold[thresholdCount - 1]; \
+    const unsigned int pathIndex = x * maxLength; \
+\
+    Particle tmp = particles[x]; \
+    bool escaped = false; \
+\
+    for (int i = 0; i < 800; i++) { \
+        SUBSTEP SUBSTEP SUBSTEP SUBSTEP SUBSTEP \
+\
+        escaped = fabs(tmp.pos.x) > 4 || fabs(tmp.pos.y) > 4 || cnorm2(tmp.pos) > 16; \
+\
+        if (tmp.prevScore < 10 && (tmp.iterCount > MAX_CONVERGE_STEPS || escaped)) { \
+            tmp.prevScore = getScore(&tmp, path, pathIndex, view); \
+            if (tmp.prevScore < 10) { \
+                tmp.prevOffset = tmp.offset; \
+                tmp.pos = getNewPos(randomState, randomIncrement, x); \
+                tmp.offset = tmp.pos; \
+                tmp.iterCount = 1; \
+                tmp.score = 0; \
+            } \
+        } if (escaped) { \
+            int thresholdIndex = matchThreshold(tmp, threshold, thresholdCount); \
+            addPath_##PATH_EXT(&tmp, path, count, threshold, thresholdCount, pathIndex, thresholdIndex, view); \
+            SCORE_##SCORE_EXT \
+            mutateParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view); \
+        } \
+\
+        else if (tmp.iterCount >= maxLength) { \
+            mutateParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view); \
+        } \
+    } \
+\
+    particles[x] = tmp; \
 }
+
+MANDEL_DEF(constant, none)
+MANDEL_DEF(sqrt, none)
+MANDEL_DEF(linear, none)
+MANDEL_DEF(square, none)
 
 /**
  * Global operations, to be optimised later
