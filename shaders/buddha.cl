@@ -352,45 +352,45 @@ inline int getScore(
     return score;
 }
 
-inline void addPath(
-    Particle *particle,
-    global float2 *path,
-    global unsigned int *count,
-    global unsigned int *threshold,
-    unsigned int thresholdCount,
-    unsigned int pathStart,
-    int thresholdIndex,
-    ViewSettings view
-) {
-    unsigned int pixelCount = view.sizeX * view.sizeY;
-    // float deltaScore = 1. / (float)particle->iterCount;
-    
-    for (unsigned int i = 0; i < particle->iterCount; i++) {
-        int2 pixel = fractalToPixel(path[pathStart + i], view);
-
-        if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) {
-            atomic_inc(&count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]);
-            // particle->score += 1;
-            // particle->score += 1. / (1 + sqrt(1. + count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]));
-            // particle->score += 1. / (1 + count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]);
-            particle->score += 1. / (1 + pown((float)count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x], 2));
-        }
-
-        path[pathStart + i].y = -path[pathStart + i].y;
-        pixel = fractalToPixel(path[pathStart + i], view);
-
-        if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) {
-            atomic_inc(&count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]);
-            // particle->score += 1;
-            // particle->score += 1. / (1 + sqrt(1. + count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]));
-            // particle->score += 1. / (1 + count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]);
-            particle->score += 1. / (1 + pown((float)count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x], 2));
-        }
-    }
-
+// I'm so sorry... There are no function pointers so I had to resort to this
+#define PATH_DEF(EXTENSION, DELTA_SCORE) \
+inline void addPath_##EXTENSION( \
+    Particle *particle, \
+    global float2 *path, \
+    global unsigned int *count, \
+    global unsigned int *threshold, \
+    unsigned int thresholdCount, \
+    unsigned int pathStart, \
+    int thresholdIndex, \
+    ViewSettings view \
+) { \
+    unsigned int pixelCount = view.sizeX * view.sizeY; \
+    float2 tmp; \
+    \
+    for (unsigned int i = 0; i < particle->iterCount; i++) { \
+        tmp = path[pathStart + i]; \
+        int2 pixel = fractalToPixel(tmp, view); \
+    \
+        if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) { \
+            atomic_inc(&count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]); \
+            particle->score += DELTA_SCORE; \
+        } \
+    \
+        tmp.y = -tmp.y; \
+        pixel = fractalToPixel(tmp, view); \
+        if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) { \
+            atomic_inc(&count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]); \
+            particle->score += DELTA_SCORE; \
+        } \
+    } \
+}
     // particle->score = pown(particle->score, 2);
     // particle->score = pown(particle->score, 2) / threshold[thresholdIndex];
-}
+
+PATH_DEF(constant, 1)
+PATH_DEF(sqrt, 1. / (1 + count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]))
+PATH_DEF(linear, 1. / (1 + sqrt(1. + count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x])))
+PATH_DEF(square, 1. / (1 + pown((float)count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x], 2)))
 
 inline void mutateParticle(
     Particle *particle,
@@ -436,6 +436,13 @@ __kernel void initParticles(
 
 constant unsigned int MAX_CONVERGE_STEPS = 500;
 
+// Just messing around with the precompiler ok get off my ass :(
+#define SUBSTEP \
+    tmp.pos = csquare(tmp.pos) + tmp.offset; \
+    path[pathIndex + tmp.iterCount] = tmp.pos; \
+    tmp.iterCount++;
+
+// #define MANDEL_DEF(PATH_EXT)
 __kernel void mandelStep(
     global Particle *particles,
     global unsigned int *count,
@@ -454,25 +461,7 @@ __kernel void mandelStep(
     bool escaped = false;
 
     for (int i = 0; i < 800; i++) {
-        tmp.pos = csquare(tmp.pos) + tmp.offset;
-        path[pathIndex + tmp.iterCount] = tmp.pos;
-        tmp.iterCount++;
-
-        tmp.pos = csquare(tmp.pos) + tmp.offset;
-        path[pathIndex + tmp.iterCount] = tmp.pos;
-        tmp.iterCount++;
-
-        tmp.pos = csquare(tmp.pos) + tmp.offset;
-        path[pathIndex + tmp.iterCount] = tmp.pos;
-        tmp.iterCount++;
-
-        tmp.pos = csquare(tmp.pos) + tmp.offset;
-        path[pathIndex + tmp.iterCount] = tmp.pos;
-        tmp.iterCount++;
-
-        tmp.pos = csquare(tmp.pos) + tmp.offset;
-        path[pathIndex + tmp.iterCount] = tmp.pos;
-        tmp.iterCount++;
+        SUBSTEP SUBSTEP SUBSTEP SUBSTEP SUBSTEP
 
         escaped = fabs(tmp.pos.x) > 4 || fabs(tmp.pos.y) > 4 || cnorm2(tmp.pos) > 16;
 
@@ -487,7 +476,7 @@ __kernel void mandelStep(
             }
         } if (escaped) {
             int thresholdIndex = matchThreshold(tmp, threshold, thresholdCount);
-            addPath(&tmp, path, count, threshold, thresholdCount, pathIndex, thresholdIndex, view);
+            addPath_sqrt(&tmp, path, count, threshold, thresholdCount, pathIndex, thresholdIndex, view);
             mutateParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view);
         }
 
@@ -563,7 +552,7 @@ __constant float IMAGE_MAX = 4294967295.0;
         }
 
         if (image[imageOffset + j] >= 4294967295) {
-           image[imageOffset + j] = 4294967295;
+            image[imageOffset + j] = 4294967295;
         }
     }
 }
