@@ -63,7 +63,7 @@ void createKernelSpecs() {
     kernelSpecs = {
         {"seedNoise",      {NULL, 1, {config->particle_count, 0}, {128, 0}, "seedNoise"}},
         {"initParticles",  {NULL, 1, {config->particle_count, 0}, {128, 0}, "initParticles"}},
-        {"mandelStep",     {NULL, 1, {config->particle_count, 0}, {128, 0}, "mandelStep_square"}},
+        {"mandelStep",     {NULL, 1, {config->particle_count, 0}, {128, 0}, "mandelStep_square_none"}},
         {"crossPollinate", {NULL, 1, {config->particle_count, 0}, {128, 0}, "crossPollinate"}},
         {"resetCount",     {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {120, 0}, "resetCount"}},
         {"findMax1",       {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {120, 0}, "findMax1"}},

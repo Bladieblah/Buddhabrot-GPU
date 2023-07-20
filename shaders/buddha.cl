@@ -385,17 +385,6 @@ inline void addPath_##EXTENSION( \
     } \
 }
 
-PATH_DEF(constant, 1)
-PATH_DEF(sqrt, 1. / (1 + count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]))
-PATH_DEF(linear, 1. / (1 + sqrt(1. + count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x])))
-PATH_DEF(square, 1. / (1 + pown((float)count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x], 2)))
-
-#define SCORE_none
-#define SCORE_square tmp.score = pown(tmp.score, 2);
-#define SCORE_sqrt tmp.score = sqrt(tmp.score);
-#define SCORE_norm tmp.score = tmp.score / threshold[thresholdIndex];
-#define SCORE_sqnorm tmp.score = pown(tmp.score, 2) / threshold[thresholdIndex];
-
 inline void mutateParticle(
     Particle *particle,
     global float2 *path,
@@ -493,10 +482,21 @@ __kernel void mandelStep_##PATH_EXT##_##SCORE_EXT( \
     particles[x] = tmp; \
 }
 
-MANDEL_DEF(constant, none)
-MANDEL_DEF(sqrt, none)
-MANDEL_DEF(linear, none)
-MANDEL_DEF(square, none)
+PATH_DEF(constant, 1)
+PATH_DEF(sqrt, 1. / (1 + count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]))
+PATH_DEF(linear, 1. / (1 + sqrt(1. + count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x])))
+PATH_DEF(square, 1. / (1 + pown((float)count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x], 2)))
+
+#define SCORE_none
+#define SCORE_sqrt tmp.score = sqrt(tmp.score);
+#define SCORE_square tmp.score = pown(tmp.score, 2);
+#define SCORE_norm tmp.score = tmp.score / threshold[thresholdIndex];
+#define SCORE_sqnorm tmp.score = pown(tmp.score, 2) / threshold[thresholdIndex];
+
+#define PATH_LOOP(SCORE_EXT) MANDEL_DEF(constant, SCORE_EXT) MANDEL_DEF(sqrt, SCORE_EXT) MANDEL_DEF(linear, SCORE_EXT) MANDEL_DEF(square, SCORE_EXT)
+#define SCORE_LOOP PATH_LOOP(none) PATH_LOOP(sqrt) PATH_LOOP(square) PATH_LOOP(norm) PATH_LOOP(sqnorm)
+
+SCORE_LOOP
 
 /**
  * Global operations, to be optimised later
