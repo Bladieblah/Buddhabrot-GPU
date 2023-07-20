@@ -558,7 +558,7 @@ __constant float IMAGE_MAX = 4294967295.0;
 
         for (uint i = 0; i < thresholdCount; i++) {
             float countFraction = (float)count[i * pixelCount + pixelOffset] / (float)maximum[i];
-            image[imageOffset + j] += (int)(COLOR_SCHEME[i][j] * sqrt(countFraction) * IMAGE_MAX);
+            image[imageOffset + j] += (int)(COLOR_SCHEME[i][j] * cbrt(countFraction) * IMAGE_MAX);
         }
 
         if (image[imageOffset + j] >= 4294967295) {

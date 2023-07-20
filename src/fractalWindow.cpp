@@ -152,6 +152,36 @@ void showInfo() {
     ImGui::Text("y = %.16f", fractal.y);
 
     ImGui::Checkbox("Draw Box", &selecting);
+
+    int counts[config->threshold_count];
+    opencl->readBuffer("maximum", counts);
+    ImGui::SeparatorText("Threshold Counts");
+
+    for (int i = 0; i < config->threshold_count; i++) {
+        ImGui::Text("Threshold %d: %d", config->thresholds[i], counts[i]);
+    }
+}
+
+void showControls() {
+    ImGui::SeparatorText("Path Type");
+    bool chg = false;
+    chg |= ImGui::RadioButton("Constant", &(settingsFW.pathType), PathOptions::PATH_CONSTANT);
+    chg |= ImGui::RadioButton("Sqrt##path",     &(settingsFW.pathType), PathOptions::PATH_SQRT);
+    chg |= ImGui::RadioButton("Linear",   &(settingsFW.pathType), PathOptions::PATH_LINEAR);
+    chg |= ImGui::RadioButton("Squared##path",  &(settingsFW.pathType), PathOptions::PATH_SQUARE);
+
+    ImGui::SeparatorText("Score Type");
+    chg |= ImGui::RadioButton("None",   &(settingsFW.scoreType), ScoreOptions::SCORE_NONE);
+    chg |= ImGui::RadioButton("Sqrt##score",   &(settingsFW.scoreType), ScoreOptions::SCORE_SQRT);
+    chg |= ImGui::RadioButton("Squared##score", &(settingsFW.scoreType), ScoreOptions::SCORE_SQUARE);
+    chg |= ImGui::RadioButton("Normed", &(settingsFW.scoreType), ScoreOptions::SCORE_NORM);
+    chg |= ImGui::RadioButton("Normed Square", &(settingsFW.scoreType), ScoreOptions::SCORE_SQNORM);
+
+    if (chg) {
+        opencl->step("resetCount");
+        opencl->step("initParticles");
+        iterCount = 0;
+    }
 }
 
 void displayFW() {
@@ -235,6 +265,7 @@ void displayFW() {
     ImGui::PushItemWidth(140);
 
     showInfo();
+    showControls();
 
     ImGui::End();
 
@@ -324,9 +355,9 @@ void keyPressedFW(unsigned char key, int x, int y) {
                 viewStackFW.pop();
 
                 for (string name : getMandelNames()) {
-                    opencl->setKernelArg("mandelStep", 7, sizeof(ViewSettings), (void*)&viewFW);
+                    opencl->setKernelArg(name, 7, sizeof(ViewSettings), (void*)&viewFW);
                 }
-                
+
                 opencl->step("resetCount");
                 opencl->step("initParticles");
                 iterCount = 0;

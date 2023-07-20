@@ -87,6 +87,51 @@ vector<string> getMandelNames() {
     return names;
 }
 
+string getMandelName() {
+    string path;
+    string score;
+
+    switch (settingsFW.pathType) {
+        default:
+        case (PathOptions::PATH_CONSTANT):
+            path = "constant";
+            break;
+        case (PathOptions::PATH_SQRT):
+            path = "sqrt";
+            break;
+        case (PathOptions::PATH_LINEAR):
+            path = "linear";
+            break;
+        case (PathOptions::PATH_SQUARE):
+            path = "square";
+            break;
+    }
+
+    switch (settingsFW.scoreType) {
+        default:
+        case (ScoreOptions::SCORE_NONE):
+            score = "none";
+            break;
+        case (ScoreOptions::SCORE_SQRT):
+            score = "sqrt";
+            break;
+        case (ScoreOptions::SCORE_SQUARE):
+            score = "square";
+            break;
+        case (ScoreOptions::SCORE_NORM):
+            score = "norm";
+            break;
+        case (ScoreOptions::SCORE_SQNORM):
+            score = "sqnorm";
+            break;
+    }
+
+    char result[100];
+    sprintf(result, "mandelStep_%s_%s", path.c_str(), score.c_str());
+
+    return result;
+}
+
 vector<KernelSpec> kernelSpecs;
 void createKernelSpecs() {
     kernelSpecs = {
@@ -235,7 +280,7 @@ void display() {
     
     displayFW();
 
-    opencl->step("mandelStep_constant_none", config->frame_steps);
+    opencl->step(getMandelName(), config->frame_steps);
     opencl->step("updateDiff");
 
     if (settingsFW.showDiff) {
