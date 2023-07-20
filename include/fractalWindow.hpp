@@ -24,7 +24,7 @@ typedef struct WindowSettings {
 typedef struct MouseState {
     int xDown, yDown;
     int x, y;
-    int state;
+    int state = 1; // GLUT_UP
 } MouseState;
 
 typedef struct ViewSettings {
@@ -44,5 +44,9 @@ extern WindowSettings settingsFW;
 extern uint32_t *pixelsFW;
 extern OpenCl *opencl;
 extern Config *config;
+
+extern float frameTime;
+extern uint32_t iterCount;
+extern uint64_t stepCount;
 
 #endif

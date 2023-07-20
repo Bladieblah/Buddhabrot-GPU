@@ -7,6 +7,10 @@
 #include <OpenGL/glu.h>
 #include <GLUT/glut.h>
 
+#include "../imgui/imgui.h"
+#include "../imgui/backends/imgui_impl_glut.h"
+#include "../imgui/backends/imgui_impl_opengl2.h"
+
 #include "coordinates.hpp"
 #include "fractalWindow.hpp"
 #include "opencl.hpp"
@@ -128,8 +132,31 @@ void drawPath() {
     glEnd();
 }
 
+void showInfo() {
+    ImGui::SeparatorText("Info");
+    ImGui::Text("x = %.16f", viewFW.centerX);
+    ImGui::Text("y = %.16f", viewFW.centerY);
+    ImGui::Text("scale = %.3g", viewFW.scaleY); ImGui::SameLine();
+    ImGui::Text("theta = %.3f", viewFW.theta);
+    ImGui::Text("Frametime = %.3f", frameTime);
+    ImGui::Text("Frames = %d", iterCount);
+    ImGui::Text("Steps = %llu M", stepCount / 1000000LLU);
+
+    ScreenCoordinate screen({mouseFW.x, mouseFW.y});
+    FractalCoordinate fractal = screen.toPixel(settingsFW).toFractal(viewFW);
+
+    ImGui::SeparatorText("Cursor");
+    ImGui::Text("x = %.16f", fractal.x);
+    ImGui::Text("y = %.16f", fractal.y);
+
+    ImGui::Checkbox("Draw Box", &selecting);
+}
+
 void displayFW() {
+    // --------------------------- RESET ---------------------------
     glutSetWindow(windowIdFW);
+
+    ImGuiIO& io = ImGui::GetIO();
 
     glClearColor( 0, 0, 0, 1 );
     glColor3f(1, 1, 1);
@@ -137,6 +164,8 @@ void displayFW() {
 
     glEnable (GL_TEXTURE_2D);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    
+    // --------------------------- FRACTAL ---------------------------
 
     glTexImage2D (
         GL_TEXTURE_2D,
@@ -162,6 +191,8 @@ void displayFW() {
     glEnd();
 
     glDisable (GL_TEXTURE_2D);
+
+    // --------------------------- Overlays ---------------------------
 
     glPointSize(2);
     glColor3f(1, 1, 1);
@@ -189,6 +220,26 @@ void displayFW() {
         drawBox();
     }
 
+    // --------------------------- IMGUI ---------------------------
+
+    ImGui_ImplOpenGL2_NewFrame();
+    ImGui_ImplGLUT_NewFrame();
+    ImGui::NewFrame();
+
+    ImGui::SetNextWindowSize(ImVec2(220, 0));
+    ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - 200, 0));
+
+    ImGui::Begin("Info");
+    ImGui::PushItemWidth(140);
+
+    showInfo();
+
+    ImGui::End();
+
+    // --------------------------- DRAW ---------------------------
+    
+    ImGui::Render();
+    ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
     glFlush();
     glutSwapBuffers();
 }
@@ -239,6 +290,7 @@ void keyPressedFW(unsigned char key, int x, int y) {
     switch (key) {
         case 'a':
             selectRegion();
+            iterCount = 0;
             break;
         case 'e':
             glutSetWindow(windowIdFW);
@@ -269,6 +321,7 @@ void keyPressedFW(unsigned char key, int x, int y) {
                 opencl->setKernelArg("mandelStep", 7, sizeof(ViewSettings), (void*)&viewFW);
                 opencl->step("resetCount");
                 opencl->step("initParticles");
+                iterCount = 0;
             }
             break;
 
@@ -287,6 +340,7 @@ void keyPressedFW(unsigned char key, int x, int y) {
             break;
         case 'R':
             opencl->step("resetCount");
+            iterCount = 0;
         case 'i':
             opencl->step("initParticles");
             break;
@@ -296,6 +350,12 @@ void keyPressedFW(unsigned char key, int x, int y) {
 }
 
 void specialKeyPressedFW(int key, int x, int y) {
+    ImGuiIO& io = ImGui::GetIO();
+    ImGui_ImplGLUT_SpecialFunc(key, x, y);
+    if (io.WantCaptureKeyboard) {
+        return;
+    }
+
     switch (key) {
         case GLUT_KEY_RIGHT:
             updateView(viewFW.scaleY, viewFW.centerX + 0.1 * viewFW.scaleY, viewFW.centerY, viewFW.theta);
@@ -320,7 +380,10 @@ void translateCamera(ScreenCoordinate coords) {
 }
 
 void mousePressedFW(int button, int state, int x, int y) {
-    if (button == GLUT_RIGHT_BUTTON) {
+    ImGuiIO& io = ImGui::GetIO();
+    ImGui_ImplGLUT_MouseFunc(button, state, x, y);
+
+    if (!io.WantCaptureMouse && button == GLUT_RIGHT_BUTTON) {
         if (state == GLUT_DOWN) {
             translateCamera((ScreenCoordinate){x, y});
         }
@@ -337,11 +400,15 @@ void mousePressedFW(int button, int state, int x, int y) {
 }
 
 void mouseMovedFW(int x, int y) {
+    ImGui_ImplGLUT_MotionFunc(x, y);
+
     mouseFW.x = x;
     mouseFW.y = y;
 }
 
 void onReshapeFW(int w, int h) {
+    ImGui_ImplGLUT_ReshapeFunc(w, h);
+
     settingsFW.windowW = w;
     settingsFW.windowH = h;
 
@@ -365,11 +432,25 @@ void createFractalWindow(char *name, uint32_t width, uint32_t height) {
     for (int i = 0; i < 3 * width * height; i++) {
         pixelsFW[i] = 0;
     }
+
+    // Setup Dear ImGui context
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO &io = ImGui::GetIO(); (void)io;
+    io.IniFilename = NULL;
+
+    ImGui::StyleColorsDark();
+    ImGui_ImplGLUT_Init();
+    ImGui_ImplOpenGL2_Init();
+
+    glutKeyboardUpFunc(ImGui_ImplGLUT_KeyboardUpFunc);
+    glutSpecialUpFunc(ImGui_ImplGLUT_SpecialUpFunc);
     
     glutKeyboardFunc(&keyPressedFW);
     glutSpecialFunc(&specialKeyPressedFW);
     glutMouseFunc(&mousePressedFW);
     glutMotionFunc(&mouseMovedFW);
+    glutPassiveMotionFunc(&mouseMovedFW);
     glutReshapeFunc(&onReshapeFW);
 }
 

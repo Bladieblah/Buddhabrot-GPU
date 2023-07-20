@@ -225,17 +225,17 @@ inline int matchThreshold(
     return -1;
 }
 
-constant float2 CENTER_1 = {-0.1225611668766536, 0.7448617666197446};
-constant float RADIUS_1 = 0.095;
+constant float RADIUS_1 = 0.0937;
+constant float RADIUS_2 = 0.0585;
+constant float RADIUS_3 = 0.0435;
+constant float RADIUS_4 = 0.0385;
+constant float RADIUS_5 = 0.023;
 
-constant float2 CENTER_2 = {-1.3107026413368228, 0};
-constant float2 CENTER_3 = {0.282271390766914, 0.5300606175785252};
-constant float RADIUS_3 = 0.044;
-
-constant float2 CENTER_4 = {-0.5043401754462431, 0.5627657614529813};
-constant float RADIUS_4 = 0.037;
-constant float2 CENTER_5 = {0.3795135880159236, 0.3349323055974974};
-constant float RADIUS_5 = 0.0225;
+constant float2 CENTER_1 = {-0.1251, 0.744};
+constant float2 CENTER_2 = {-1.309, 0};
+constant float2 CENTER_3 = {0.2815, 0.531};
+constant float2 CENTER_4 = {-0.5045, 0.563};
+constant float2 CENTER_5 = {0.379, 0.336};
 
 inline bool isValid(float2 coord) {
     float c2 = cnorm2(coord);
@@ -581,7 +581,6 @@ __kernel void updateDiff(
     const int W = get_global_size(0);
     const int H = get_global_size(1);
 
-    // count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]
     unsigned int pixelCount = W * H;
     unsigned int ind;
 
