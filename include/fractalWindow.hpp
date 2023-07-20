@@ -36,6 +36,7 @@ typedef struct WindowSettings {
     bool crossPollinate = false;
     int pathType = PathOptions::PATH_CONSTANT;
     int scoreType = ScoreOptions::SCORE_NONE;
+    bool updateView = true;
 } WindowSettings;
 
 typedef struct MouseState {

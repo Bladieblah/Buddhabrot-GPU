@@ -32,7 +32,7 @@ void showParticles() {
 
     for (int i = 0; i < config->particle_count; i++) {
         Particle particle = particles[i];
-        PixelCoordinate coord = ((FractalCoordinate){particle.prevOffset.s[0], particle.prevOffset.s[1]}).toPixel(defaultView);
+        PixelfCoordinate coord = ((FractalCoordinate){particle.prevOffset.s[0], particle.prevOffset.s[1]}).toPixelf(defaultView);
 
         if (particle.prevScore == -1) {
             glColor3f(1,0,0);
@@ -194,35 +194,37 @@ void displayFW() {
     glColor3f(1, 1, 1);
     glClear( GL_COLOR_BUFFER_BIT );
 
-    glEnable (GL_TEXTURE_2D);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    
     // --------------------------- FRACTAL ---------------------------
 
-    glTexImage2D (
-        GL_TEXTURE_2D,
-        0,
-        GL_RGB,
-        settingsFW.width,
-        settingsFW.height,
-        0,
-        GL_RGB,
-        GL_UNSIGNED_INT,
-        &(pixelsFW[0])
-    );
+    if (settingsFW.updateView) {
+        glEnable (GL_TEXTURE_2D);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
-    glPushMatrix();
-    glScalef(settingsFW.zoom, settingsFW.zoom, 1.);
-    glTranslatef(-settingsFW.centerX, -settingsFW.centerY, 0.);
+        glTexImage2D (
+            GL_TEXTURE_2D,
+            0,
+            GL_RGB,
+            settingsFW.width,
+            settingsFW.height,
+            0,
+            GL_RGB,
+            GL_UNSIGNED_INT,
+            &(pixelsFW[0])
+        );
 
-    glBegin(GL_QUADS);
-        glTexCoord2f(0.0f, 0.0f); glVertex2f(-1.0, -1.0);
-        glTexCoord2f(1.0f, 0.0f); glVertex2f( 1.0, -1.0);
-        glTexCoord2f(1.0f, 1.0f); glVertex2f( 1.0,  1.0);
-        glTexCoord2f(0.0f, 1.0f); glVertex2f(-1.0,  1.0);
-    glEnd();
+        glPushMatrix();
+        glScalef(settingsFW.zoom, settingsFW.zoom, 1.);
+        glTranslatef(-settingsFW.centerX, -settingsFW.centerY, 0.);
 
-    glDisable (GL_TEXTURE_2D);
+        glBegin(GL_QUADS);
+            glTexCoord2f(0.0f, 0.0f); glVertex2f(-1.0, -1.0);
+            glTexCoord2f(1.0f, 0.0f); glVertex2f( 1.0, -1.0);
+            glTexCoord2f(1.0f, 1.0f); glVertex2f( 1.0,  1.0);
+            glTexCoord2f(0.0f, 1.0f); glVertex2f(-1.0,  1.0);
+        glEnd();
+
+        glDisable (GL_TEXTURE_2D);
+    }
 
     // --------------------------- Overlays ---------------------------
 
@@ -337,6 +339,9 @@ void keyPressedFW(unsigned char key, int x, int y) {
             break;
         case 'd':
             settingsFW.showDiff = ! settingsFW.showDiff;
+            break;
+        case 'u':
+            settingsFW.updateView = ! settingsFW.updateView;
             break;
         case 'b':
             selecting = ! selecting;

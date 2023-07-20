@@ -296,11 +296,15 @@ void display() {
     if (settingsFW.crossPollinate) {
         opencl->step("crossPollinate", 1);
     }
-    
-    opencl->readBuffer("image", pixelsFW);
+
+    if (settingsFW.updateView) {
+        opencl->readBuffer("image", pixelsFW);
+    }
+
+    opencl->flush();
 
     iterCount++;
-    stepCount += config->frame_steps * config->particle_count * 800;
+    stepCount += config->frame_steps * config->particle_count * 4000;
 
     chrono::high_resolution_clock::time_point temp = chrono::high_resolution_clock::now();
     chrono::duration<float> time_span = chrono::duration_cast<chrono::duration<float>>(temp - timePoint);
