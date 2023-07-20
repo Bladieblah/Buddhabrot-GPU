@@ -352,39 +352,6 @@ inline int getScore(
     return score;
 }
 
-// I'm so sorry... There are no function pointers so I had to resort to this
-#define PATH_DEF(EXTENSION, DELTA_SCORE) \
-inline void addPath_##EXTENSION( \
-    Particle *particle, \
-    global float2 *path, \
-    global unsigned int *count, \
-    global unsigned int *threshold, \
-    unsigned int thresholdCount, \
-    unsigned int pathStart, \
-    int thresholdIndex, \
-    ViewSettings view \
-) { \
-    unsigned int pixelCount = view.sizeX * view.sizeY; \
-    float2 tmp; \
-    \
-    for (unsigned int i = 0; i < particle->iterCount; i++) { \
-        tmp = path[pathStart + i]; \
-        int2 pixel = fractalToPixel(tmp, view); \
-    \
-        if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) { \
-            atomic_inc(&count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]); \
-            particle->score += DELTA_SCORE; \
-        } \
-    \
-        tmp.y = -tmp.y; \
-        pixel = fractalToPixel(tmp, view); \
-        if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) { \
-            atomic_inc(&count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]); \
-            particle->score += DELTA_SCORE; \
-        } \
-    } \
-}
-
 inline void mutateParticle(
     Particle *particle,
     global float2 *path,
@@ -430,6 +397,39 @@ __kernel void initParticles(
     Particle tmp = particles[x];
     resetParticle(&tmp, path, x * threshold[thresholdCount - 1], randomState, randomIncrement, x);
     particles[x] = tmp;
+}
+
+// I'm so sorry... There are no function pointers so I had to resort to this
+#define PATH_DEF(EXTENSION, DELTA_SCORE) \
+inline void addPath_##EXTENSION( \
+    Particle *particle, \
+    global float2 *path, \
+    global unsigned int *count, \
+    global unsigned int *threshold, \
+    unsigned int thresholdCount, \
+    unsigned int pathStart, \
+    int thresholdIndex, \
+    ViewSettings view \
+) { \
+    unsigned int pixelCount = view.sizeX * view.sizeY; \
+    float2 tmp; \
+    \
+    for (unsigned int i = 0; i < particle->iterCount; i++) { \
+        tmp = path[pathStart + i]; \
+        int2 pixel = fractalToPixel(tmp, view); \
+    \
+        if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) { \
+            atomic_inc(&count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]); \
+            particle->score += DELTA_SCORE; \
+        } \
+    \
+        tmp.y = -tmp.y; \
+        pixel = fractalToPixel(tmp, view); \
+        if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) { \
+            atomic_inc(&count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]); \
+            particle->score += DELTA_SCORE; \
+        } \
+    } \
 }
 
 constant unsigned int MAX_CONVERGE_STEPS = 500;
