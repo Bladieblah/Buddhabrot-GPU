@@ -257,11 +257,11 @@ void prepare() {
     initState = (uint64_t *)malloc(config->particle_count * sizeof(uint64_t));
     initSeq = (uint64_t *)malloc(config->particle_count * sizeof(uint64_t));
 
-    float scaleY = 1.3;
+    float scaleY = config->scale;
     viewFW = {
         scaleY / (float)config->height * (float)config->width, scaleY,
-        -0.5, 0.,
-        0., 0., 1.,
+        config->center_x, config->center_y,
+        config->theta, sin(config->theta), cos(config->theta),
         (int)config->width, (int)config->height
     };
 

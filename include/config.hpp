@@ -21,6 +21,11 @@ public:
     unsigned int maximum_size = 32;
     unsigned int frame_steps = 100;
 
+    float scale = 1.3;
+    float center_x = -0.5;
+    float center_y = 0.;
+    float theta = 0.;
+
     bool profile = true;
     bool verbose = true;
 
@@ -46,6 +51,11 @@ private:
 
         {"width", {'i', (void *)&width}},
         {"height", {'i', (void *)&height}},
+
+        {"scale", {'f', (void *)&scale}},
+        {"center_x", {'f', (void *)&center_x}},
+        {"center_y", {'f', (void *)&center_y}},
+        {"theta", {'f', (void *)&theta}},
         
         {"maximum_size", {'i', (void *)&maximum_size}},
         {"frame_steps", {'i', (void *)&frame_steps}},
