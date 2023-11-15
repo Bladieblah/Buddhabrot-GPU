@@ -417,6 +417,32 @@ void keyPressedFW(unsigned char key, int x, int y) {
         case 'W':
             writePng();
             break;
+        
+        case '-':
+            updateView(viewFW.scaleY * 1.1, viewFW.centerX, viewFW.centerY, viewFW.theta);
+            break;
+        case '=':
+            updateView(viewFW.scaleY / 1.1, viewFW.centerX, viewFW.centerY, viewFW.theta);
+            break;
+        case '_':
+            updateView(viewFW.scaleY * 1.01, viewFW.centerX, viewFW.centerY, viewFW.theta);
+            break;
+        case '+':
+            updateView(viewFW.scaleY / 1.01, viewFW.centerX, viewFW.centerY, viewFW.theta);
+            break;
+        
+        case '[':
+            updateView(viewFW.scaleY, viewFW.centerX, viewFW.centerY, viewFW.theta + 0.1);
+            break;
+        case ']':
+            updateView(viewFW.scaleY, viewFW.centerX, viewFW.centerY, viewFW.theta - 0.1);
+            break;
+        case '{':
+            updateView(viewFW.scaleY, viewFW.centerX, viewFW.centerY, viewFW.theta + 0.003);
+            break;
+        case '}':
+            updateView(viewFW.scaleY, viewFW.centerX, viewFW.centerY, viewFW.theta - 0.003);
+            break;
         default:
             break;
     }
@@ -431,16 +457,24 @@ void specialKeyPressedFW(int key, int x, int y) {
 
     switch (key) {
         case GLUT_KEY_RIGHT:
-            updateView(viewFW.scaleY, viewFW.centerX + 0.1 * viewFW.scaleY, viewFW.centerY, viewFW.theta);
+            updateView(viewFW.scaleY, 
+                viewFW.centerX + 0.1 * viewFW.scaleY * cos(viewFW.theta), 
+                viewFW.centerY - 0.1 * viewFW.scaleY * sin(viewFW.theta), viewFW.theta);
             break;
         case GLUT_KEY_LEFT:
-            updateView(viewFW.scaleY, viewFW.centerX - 0.1 * viewFW.scaleY, viewFW.centerY, viewFW.theta);
+            updateView(viewFW.scaleY, 
+                viewFW.centerX - 0.1 * viewFW.scaleY * cos(viewFW.theta), 
+                viewFW.centerY + 0.1 * viewFW.scaleY * sin(viewFW.theta), viewFW.theta);
             break;
         case GLUT_KEY_UP:
-            updateView(viewFW.scaleY, viewFW.centerX, viewFW.centerY + 0.1 * viewFW.scaleY, viewFW.theta);
+            updateView(viewFW.scaleY, 
+                viewFW.centerX + 0.1 * viewFW.scaleY * sin(viewFW.theta), 
+                viewFW.centerY + 0.1 * viewFW.scaleY * cos(viewFW.theta), viewFW.theta);
             break;
         case GLUT_KEY_DOWN:
-            updateView(viewFW.scaleY, viewFW.centerX, viewFW.centerY - 0.1 * viewFW.scaleY, viewFW.theta);
+            updateView(viewFW.scaleY, 
+                viewFW.centerX - 0.1 * viewFW.scaleY * sin(viewFW.theta), 
+                viewFW.centerY - 0.1 * viewFW.scaleY * cos(viewFW.theta), viewFW.theta);
             break;
         default:
             break;
