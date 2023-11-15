@@ -36,8 +36,8 @@ typedef struct WindowSettings {
     bool showParticles = false;
     bool showDiff = false;
     bool crossPollinate = false;
-    int pathType = PathOptions::PATH_CONSTANT;
-    int scoreType = ScoreOptions::SCORE_NONE;
+    int pathType = PathOptions::PATH_LINEAR;
+    int scoreType = ScoreOptions::SCORE_SQRT;
     bool updateView = true;
 } WindowSettings;
 

@@ -328,12 +328,13 @@ void writePng() {
     char filename[200];
 
     sprintf(filename, "images/%s_%d_%d_%.6f_%.6f_%.6f_%.6f.png", 
-        getMandelName().c_str(), settingsFW.width, settingsFW.height, viewFW.theta, viewFW.centerX, viewFW.centerY, viewFW.scaleY);
+        getMandelName().c_str(), settingsFW.width, settingsFW.height,
+        viewFW.theta, viewFW.centerX, viewFW.centerY, viewFW.scaleY);
     
     unsigned char *image8Bit = (unsigned char *)malloc(3 * settingsFW.width * settingsFW.height * sizeof(unsigned char));
 
     for (int i = 0; i < 3 * settingsFW.width * settingsFW.height; i++) {
-        image8Bit[i] = (unsigned char)pixelsFW[i];
+        image8Bit[i] = pixelsFW[i] >> 24;
     }
     
     unsigned error = lodepng_encode24_file(filename, image8Bit, settingsFW.width, settingsFW.height);
