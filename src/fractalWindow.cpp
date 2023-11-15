@@ -327,14 +327,19 @@ void selectRegion() {
 void writePng() {
     char filename[200];
 
+    uint32_t h = settingsFW.height; 
+    uint32_t w = settingsFW.width; 
+
     sprintf(filename, "images/%s_%d_%d_%.6f_%.6f_%.6f_%.6f.png", 
         getMandelName().c_str(), settingsFW.width, settingsFW.height,
         viewFW.theta, viewFW.centerX, viewFW.centerY, viewFW.scaleY);
     
-    unsigned char *image8Bit = (unsigned char *)malloc(3 * settingsFW.width * settingsFW.height * sizeof(unsigned char));
+    unsigned char *image8Bit = (unsigned char *)malloc(3 * w * h * sizeof(unsigned char));
 
-    for (int i = 0; i < 3 * settingsFW.width * settingsFW.height; i++) {
-        image8Bit[i] = pixelsFW[i] >> 24;
+    for (uint32_t i = 0; i < h; i++) {
+        for (uint32_t j = 0; j < 3 * w; j++) {
+            image8Bit[3 * w * (h - i - 1) + j] = pixelsFW[3 * w * i + j] >> ((sizeof(unsigned int) - sizeof(unsigned char)) * 8);
+        }
     }
     
     unsigned error = lodepng_encode24_file(filename, image8Bit, settingsFW.width, settingsFW.height);
