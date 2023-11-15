@@ -138,13 +138,13 @@ void createKernelSpecs() {
         {"seedNoise",      {NULL, 1, {config->particle_count, 0}, {128, 0}, "seedNoise"}},
         {"initParticles",  {NULL, 1, {config->particle_count, 0}, {128, 0}, "initParticles"}},
         {"crossPollinate", {NULL, 1, {config->particle_count, 0}, {128, 0}, "crossPollinate"}},
-        {"resetCount",     {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {120, 0}, "resetCount"}},
-        {"findMax1",       {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {120, 0}, "findMax1"}},
+        {"resetCount",     {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {0, 0}, "resetCount"}},
+        {"findMax1",       {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {0, 0}, "findMax1"}},
         {"findMax2",       {NULL, 1, {config->threshold_count, 0}, {config->threshold_count, 0}, "findMax2"}},
-        {"findMaxDiff",    {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {120, 0}, "findMax1"}},
-        {"renderImage",    {NULL, 2, {config->width, config->height}, {8, 8}, "renderImage"}},
-        {"renderImageD",   {NULL, 2, {config->width, config->height}, {8, 8}, "renderImage"}},
-        {"updateDiff",     {NULL, 2, {config->width, config->height}, {8, 8}, "updateDiff"}},
+        {"findMaxDiff",    {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {0, 0}, "findMax1"}},
+        {"renderImage",    {NULL, 2, {config->width, config->height}, {0, 0}, "renderImage"}},
+        {"renderImageD",   {NULL, 2, {config->width, config->height}, {0, 0}, "renderImage"}},
+        {"updateDiff",     {NULL, 2, {config->width, config->height}, {0, 0}, "updateDiff"}},
     };
 
     for (string name : getMandelNames()) {

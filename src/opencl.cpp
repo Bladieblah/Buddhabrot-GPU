@@ -165,7 +165,11 @@ void OpenCl::step(string name, int count) {
     startTimer();
 
     for (int i = 0; i < count; i++) {
-        ret = clEnqueueNDRangeKernel(command_queue, kernel.kernel, kernel.work_dim, NULL, kernel.global_size, kernel.local_size, 0, NULL, NULL);
+        if (kernel.local_size[0] > 0) {
+            ret = clEnqueueNDRangeKernel(command_queue, kernel.kernel, kernel.work_dim, NULL, kernel.global_size, kernel.local_size, 0, NULL, NULL);
+        } else {
+            ret = clEnqueueNDRangeKernel(command_queue, kernel.kernel, kernel.work_dim, NULL, kernel.global_size, NULL, 0, NULL, NULL);
+        }
         
         if (ret != CL_SUCCESS) {
             fprintf(stderr, "Failed executing kernel [%s]: %d\n", name.c_str(), ret);
