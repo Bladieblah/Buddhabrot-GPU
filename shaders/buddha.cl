@@ -290,7 +290,6 @@ inline float2 getNewPos(
         (9. * uniformRand(randomState, randomIncrement, x) - 5.2),
         (6. * uniformRand(randomState, randomIncrement, x) - 3.)
     );
-    // return newOffset;
 
     for (int i = 0; i < 50; i++) {
         if (isValid(newOffset)) {

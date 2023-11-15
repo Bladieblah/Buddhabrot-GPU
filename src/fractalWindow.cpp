@@ -13,6 +13,7 @@
 
 #include "coordinates.hpp"
 #include "fractalWindow.hpp"
+#include "lodepng.hpp"
 #include "opencl.hpp"
 
 using namespace std;
@@ -323,6 +324,25 @@ void selectRegion() {
     );
 }
 
+void writePng() {
+    char filename[200];
+
+    sprintf(filename, "images/%s_%d_%d_%.6f_%.6f_%.6f_%.6f.png", 
+        getMandelName().c_str(), settingsFW.width, settingsFW.height, viewFW.theta, viewFW.centerX, viewFW.centerY, viewFW.scaleY);
+    
+    unsigned char *image8Bit = (unsigned char *)malloc(3 * settingsFW.width * settingsFW.height * sizeof(unsigned char));
+
+    for (int i = 0; i < 3 * settingsFW.width * settingsFW.height; i++) {
+        image8Bit[i] = (unsigned char)pixelsFW[i];
+    }
+    
+    unsigned error = lodepng_encode24_file(filename, image8Bit, settingsFW.width, settingsFW.height);
+
+    if (error){
+        fprintf(stderr, "Encoder error %d: %s\n", error, lodepng_error_text(error));
+    }
+}
+
 void keyPressedFW(unsigned char key, int x, int y) {
     switch (key) {
         case 'a':
@@ -387,6 +407,9 @@ void keyPressedFW(unsigned char key, int x, int y) {
             iterCount = 0;
         case 'i':
             opencl->step("initParticles");
+            break;
+        case 'W':
+            writePng();
             break;
         default:
             break;

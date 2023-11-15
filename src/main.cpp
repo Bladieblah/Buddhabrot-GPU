@@ -142,9 +142,9 @@ void createKernelSpecs() {
         {"findMax1",       {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {120, 0}, "findMax1"}},
         {"findMax2",       {NULL, 1, {config->threshold_count, 0}, {config->threshold_count, 0}, "findMax2"}},
         {"findMaxDiff",    {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {120, 0}, "findMax1"}},
-        {"renderImage",    {NULL, 2, {config->width, config->height}, {16, 16}, "renderImage"}},
-        {"renderImageD",   {NULL, 2, {config->width, config->height}, {16, 16}, "renderImage"}},
-        {"updateDiff",     {NULL, 2, {config->width, config->height}, {16, 16}, "updateDiff"}},
+        {"renderImage",    {NULL, 2, {config->width, config->height}, {8, 8}, "renderImage"}},
+        {"renderImageD",   {NULL, 2, {config->width, config->height}, {8, 8}, "renderImage"}},
+        {"updateDiff",     {NULL, 2, {config->width, config->height}, {8, 8}, "updateDiff"}},
     };
 
     for (string name : getMandelNames()) {

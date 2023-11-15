@@ -26,6 +26,8 @@ enum ScoreOptions {
     SCORE_SQNORM,
 };
 
+std::string getMandelName();
+
 typedef struct WindowSettings {
     uint32_t width, height;
     uint32_t windowW, windowH;
