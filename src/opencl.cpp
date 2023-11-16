@@ -179,7 +179,7 @@ void OpenCl::step(string name, int count) {
 
     getTime();
     fprintf(stderr, "%s ", name.c_str());
-    for (int i = strlen(name.c_str()); i < 20; i++) {
+    for (int i = strlen(name.c_str()); i < 30; i++) {
         fprintf(stderr, " ");
     }
 
