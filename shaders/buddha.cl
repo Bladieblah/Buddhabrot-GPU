@@ -290,7 +290,6 @@ inline float2 getNewPos(
         (9. * uniformRand(randomState, randomIncrement, x) - 5.2),
         (6. * uniformRand(randomState, randomIncrement, x) - 3.)
     );
-    // return newOffset;
 
     for (int i = 0; i < 50; i++) {
         if (isValid(newOffset)) {
@@ -352,46 +351,6 @@ inline int getScore(
     return score;
 }
 
-inline void addPath(
-    Particle *particle,
-    global float2 *path,
-    global unsigned int *count,
-    global unsigned int *threshold,
-    unsigned int thresholdCount,
-    unsigned int pathStart,
-    int thresholdIndex,
-    ViewSettings view
-) {
-    unsigned int pixelCount = view.sizeX * view.sizeY;
-    // float deltaScore = 1. / (float)particle->iterCount;
-    
-    for (unsigned int i = 0; i < particle->iterCount; i++) {
-        int2 pixel = fractalToPixel(path[pathStart + i], view);
-
-        if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) {
-            atomic_inc(&count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]);
-            // particle->score += 1;
-            // particle->score += 1. / (1 + sqrt(1. + count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]));
-            // particle->score += 1. / (1 + count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]);
-            particle->score += 1. / (1 + pown((float)count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x], 2));
-        }
-
-        path[pathStart + i].y = -path[pathStart + i].y;
-        pixel = fractalToPixel(path[pathStart + i], view);
-
-        if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) {
-            atomic_inc(&count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]);
-            // particle->score += 1;
-            // particle->score += 1. / (1 + sqrt(1. + count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]));
-            // particle->score += 1. / (1 + count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]);
-            particle->score += 1. / (1 + pown((float)count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x], 2));
-        }
-    }
-
-    // particle->score = pown(particle->score, 2);
-    // particle->score = pown(particle->score, 2) / threshold[thresholdIndex];
-}
-
 inline void mutateParticle(
     Particle *particle,
     global float2 *path,
@@ -406,10 +365,15 @@ inline void mutateParticle(
         particle->prevOffset = particle->offset;
     }
 
-    float2 newOffset = (float2)(
-        particle->prevOffset.x + 0.01 * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f),// / (1 + particle->iterCount),
-        particle->prevOffset.y + 0.01 * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f)// / (1 + particle->iterCount)
-    );
+    float2 newOffset;
+    if (uniformRand(randomState, randomIncrement, x) < 0.95) {
+        newOffset = (float2)(
+            particle->prevOffset.x + 0.01 * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f),// / (1 + particle->iterCount),
+            particle->prevOffset.y + 0.01 * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f)// / (1 + particle->iterCount)
+        );
+    } else {
+        newOffset = getNewPos(randomState, randomIncrement, x);
+    }
 
     particle->pos = newOffset;
     particle->offset = newOffset;
@@ -434,70 +398,109 @@ __kernel void initParticles(
     particles[x] = tmp;
 }
 
+// I'm so sorry... There are no function pointers so I had to resort to this
+#define PATH_DEF(EXTENSION, DELTA_SCORE) \
+inline void addPath_##EXTENSION( \
+    Particle *particle, \
+    global float2 *path, \
+    global unsigned int *count, \
+    global unsigned int *threshold, \
+    unsigned int thresholdCount, \
+    unsigned int pathStart, \
+    int thresholdIndex, \
+    ViewSettings view \
+) { \
+    unsigned int pixelCount = view.sizeX * view.sizeY; \
+    float2 tmp; \
+    \
+    for (unsigned int i = 0; i < particle->iterCount; i++) { \
+        tmp = path[pathStart + i]; \
+        int2 pixel = fractalToPixel(tmp, view); \
+    \
+        if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) { \
+            atomic_inc(&count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]); \
+            particle->score += DELTA_SCORE; \
+        } \
+    \
+        tmp.y = -tmp.y; \
+        pixel = fractalToPixel(tmp, view); \
+        if (! (pixel.x < 0 || pixel.x >= view.sizeX || pixel.y < 0 || pixel.y >= view.sizeY)) { \
+            atomic_inc(&count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]); \
+            particle->score += DELTA_SCORE; \
+        } \
+    } \
+}
+
 constant unsigned int MAX_CONVERGE_STEPS = 500;
 
-__kernel void mandelStep(
-    global Particle *particles,
-    global unsigned int *count,
-    global unsigned int *threshold,
-    global float2 *path,
-    global ulong *randomState,
-    global ulong *randomIncrement,
-    unsigned int thresholdCount,
-    ViewSettings view
-) {
-    const int x = get_global_id(0);
-    const unsigned int maxLength = threshold[thresholdCount - 1];
-    const unsigned int pathIndex = x * maxLength;
+// Just messing around with the precompiler ok get off my ass :(
+#define SUBSTEP \
+    tmp.pos = csquare(tmp.pos) + tmp.offset; \
+    path[pathIndex + tmp.iterCount] = tmp.pos; \
+    tmp.iterCount++;
 
-    Particle tmp = particles[x];
-    bool escaped = false;
-
-    for (int i = 0; i < 800; i++) {
-        tmp.pos = csquare(tmp.pos) + tmp.offset;
-        path[pathIndex + tmp.iterCount] = tmp.pos;
-        tmp.iterCount++;
-
-        tmp.pos = csquare(tmp.pos) + tmp.offset;
-        path[pathIndex + tmp.iterCount] = tmp.pos;
-        tmp.iterCount++;
-
-        tmp.pos = csquare(tmp.pos) + tmp.offset;
-        path[pathIndex + tmp.iterCount] = tmp.pos;
-        tmp.iterCount++;
-
-        tmp.pos = csquare(tmp.pos) + tmp.offset;
-        path[pathIndex + tmp.iterCount] = tmp.pos;
-        tmp.iterCount++;
-
-        tmp.pos = csquare(tmp.pos) + tmp.offset;
-        path[pathIndex + tmp.iterCount] = tmp.pos;
-        tmp.iterCount++;
-
-        escaped = fabs(tmp.pos.x) > 4 || fabs(tmp.pos.y) > 4 || cnorm2(tmp.pos) > 16;
-
-        if (tmp.prevScore < 10 && (tmp.iterCount > MAX_CONVERGE_STEPS || escaped)) {
-            tmp.prevScore = getScore(&tmp, path, pathIndex, view);
-            if (tmp.prevScore < 10) {
-                tmp.prevOffset = tmp.offset;
-                tmp.pos = getNewPos(randomState, randomIncrement, x);
-                tmp.offset = tmp.pos;
-                tmp.iterCount = 1;
-                tmp.score = 0;
-            }
-        } if (escaped) {
-            int thresholdIndex = matchThreshold(tmp, threshold, thresholdCount);
-            addPath(&tmp, path, count, threshold, thresholdCount, pathIndex, thresholdIndex, view);
-            mutateParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view);
-        }
-
-        else if (tmp.iterCount >= maxLength) {
-            mutateParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view);
-        }
-    }
-
-    particles[x] = tmp;
+#define MANDEL_DEF(PATH_EXT, SCORE_EXT) \
+__kernel void mandelStep_##PATH_EXT##_##SCORE_EXT( \
+    global Particle *particles, \
+    global unsigned int *count, \
+    global unsigned int *threshold, \
+    global float2 *path, \
+    global ulong *randomState, \
+    global ulong *randomIncrement, \
+    unsigned int thresholdCount, \
+    ViewSettings view \
+) { \
+    const int x = get_global_id(0); \
+    const unsigned int maxLength = threshold[thresholdCount - 1]; \
+    const unsigned int pathIndex = x * maxLength; \
+\
+    Particle tmp = particles[x]; \
+    bool escaped = false; \
+\
+    for (int i = 0; i < 800; i++) { \
+        SUBSTEP SUBSTEP SUBSTEP SUBSTEP SUBSTEP \
+\
+        escaped = fabs(tmp.pos.x) > 4 || fabs(tmp.pos.y) > 4 || cnorm2(tmp.pos) > 16; \
+\
+        if (tmp.prevScore < 10 && (tmp.iterCount > MAX_CONVERGE_STEPS || escaped)) { \
+            tmp.prevScore = getScore(&tmp, path, pathIndex, view); \
+            if (tmp.prevScore < 10) { \
+                tmp.prevOffset = tmp.offset; \
+                tmp.pos = getNewPos(randomState, randomIncrement, x); \
+                tmp.offset = tmp.pos; \
+                tmp.iterCount = 1; \
+                tmp.score = 0; \
+            } \
+        } if (escaped) { \
+            int thresholdIndex = matchThreshold(tmp, threshold, thresholdCount); \
+            addPath_##PATH_EXT(&tmp, path, count, threshold, thresholdCount, pathIndex, thresholdIndex, view); \
+            SCORE_##SCORE_EXT \
+            mutateParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view); \
+        } \
+\
+        else if (tmp.iterCount >= maxLength) { \
+            resetParticle(&tmp, path, pathIndex, randomState, randomIncrement, x); \
+        } \
+    } \
+\
+    particles[x] = tmp; \
 }
+
+PATH_DEF(constant, 1)
+PATH_DEF(sqrt, 1. / (1 + count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x]))
+PATH_DEF(linear, 1. / (1 + sqrt(1. + count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x])))
+PATH_DEF(square, 1. / (1 + pown((float)count[thresholdIndex * pixelCount + view.sizeX * pixel.y + pixel.x], 2)))
+
+#define SCORE_none
+#define SCORE_sqrt tmp.score = sqrt(tmp.score);
+#define SCORE_square tmp.score = pown(tmp.score, 2);
+#define SCORE_norm tmp.score = tmp.score / threshold[thresholdIndex];
+#define SCORE_sqnorm tmp.score = pown(tmp.score, 2) / threshold[thresholdIndex];
+
+#define PATH_LOOP(SCORE_EXT) MANDEL_DEF(constant, SCORE_EXT) MANDEL_DEF(sqrt, SCORE_EXT) MANDEL_DEF(linear, SCORE_EXT) MANDEL_DEF(square, SCORE_EXT)
+#define SCORE_LOOP PATH_LOOP(none) PATH_LOOP(sqrt) PATH_LOOP(square) PATH_LOOP(norm) PATH_LOOP(sqnorm)
+
+SCORE_LOOP
 
 /**
  * Global operations, to be optimised later
@@ -563,7 +566,7 @@ __constant float IMAGE_MAX = 4294967295.0;
         }
 
         if (image[imageOffset + j] >= 4294967295) {
-           image[imageOffset + j] = 4294967295;
+            image[imageOffset + j] = 4294967295;
         }
     }
 }

@@ -7,6 +7,7 @@
 
 typedef struct FractalCoordinate FractalCoordinate;
 typedef struct PixelCoordinate PixelCoordinate;
+typedef struct PixelfCoordinate PixelfCoordinate;
 typedef struct ScreenCoordinate ScreenCoordinate;
 
 /**
@@ -15,6 +16,7 @@ typedef struct ScreenCoordinate ScreenCoordinate;
 struct FractalCoordinate {
     float x, y;
     PixelCoordinate toPixel(ViewSettings view);
+    PixelfCoordinate toPixelf(ViewSettings view);
     void rotate(float sinTheta, float cosTheta);
 };
 
@@ -31,6 +33,13 @@ struct PixelCoordinate {
     int x, y;
     FractalCoordinate toFractal(ViewSettings view);
     ScreenCoordinate toScreen(WindowSettings settings);
+};
+
+/**
+ * Coordinates in the pixel array that is drawn to the screen as floats.
+ */
+struct PixelfCoordinate {
+    float x, y;
 };
 
 /**

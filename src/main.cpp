@@ -58,21 +58,98 @@ void createBufferSpecs() {
     };
 }
 
+vector<string> pathExtenstions = {
+    "constant",
+    "sqrt",
+    "linear",
+    "square",
+};
+
+vector<string> scoreExtenstions = {
+    "none",
+    "sqrt",
+    "square",
+    "norm",
+    "sqnorm",
+};
+
+vector<string> getMandelNames() {
+    vector<string> names;
+
+    char tmp[100];
+    for (string path : pathExtenstions) {
+        for (string score : scoreExtenstions) {
+            sprintf(tmp, "mandelStep_%s_%s", path.c_str(), score.c_str());
+            names.push_back(tmp);
+        }
+    }
+
+    return names;
+}
+
+string getMandelName() {
+    string path;
+    string score;
+
+    switch (settingsFW.pathType) {
+        default:
+        case (PathOptions::PATH_CONSTANT):
+            path = "constant";
+            break;
+        case (PathOptions::PATH_SQRT):
+            path = "sqrt";
+            break;
+        case (PathOptions::PATH_LINEAR):
+            path = "linear";
+            break;
+        case (PathOptions::PATH_SQUARE):
+            path = "square";
+            break;
+    }
+
+    switch (settingsFW.scoreType) {
+        default:
+        case (ScoreOptions::SCORE_NONE):
+            score = "none";
+            break;
+        case (ScoreOptions::SCORE_SQRT):
+            score = "sqrt";
+            break;
+        case (ScoreOptions::SCORE_SQUARE):
+            score = "square";
+            break;
+        case (ScoreOptions::SCORE_NORM):
+            score = "norm";
+            break;
+        case (ScoreOptions::SCORE_SQNORM):
+            score = "sqnorm";
+            break;
+    }
+
+    char result[100];
+    sprintf(result, "mandelStep_%s_%s", path.c_str(), score.c_str());
+
+    return result;
+}
+
 vector<KernelSpec> kernelSpecs;
 void createKernelSpecs() {
     kernelSpecs = {
         {"seedNoise",      {NULL, 1, {config->particle_count, 0}, {128, 0}, "seedNoise"}},
         {"initParticles",  {NULL, 1, {config->particle_count, 0}, {128, 0}, "initParticles"}},
-        {"mandelStep",     {NULL, 1, {config->particle_count, 0}, {128, 0}, "mandelStep"}},
         {"crossPollinate", {NULL, 1, {config->particle_count, 0}, {128, 0}, "crossPollinate"}},
-        {"resetCount",     {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {120, 0}, "resetCount"}},
-        {"findMax1",       {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {120, 0}, "findMax1"}},
+        {"resetCount",     {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {0, 0}, "resetCount"}},
+        {"findMax1",       {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {0, 0}, "findMax1"}},
         {"findMax2",       {NULL, 1, {config->threshold_count, 0}, {config->threshold_count, 0}, "findMax2"}},
-        {"findMaxDiff",    {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {120, 0}, "findMax1"}},
-        {"renderImage",    {NULL, 2, {config->width, config->height}, {16, 16}, "renderImage"}},
-        {"renderImageD",   {NULL, 2, {config->width, config->height}, {16, 16}, "renderImage"}},
-        {"updateDiff",     {NULL, 2, {config->width, config->height}, {16, 16}, "updateDiff"}},
+        {"findMaxDiff",    {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {0, 0}, "findMax1"}},
+        {"renderImage",    {NULL, 2, {config->width, config->height}, {0, 0}, "renderImage"}},
+        {"renderImageD",   {NULL, 2, {config->width, config->height}, {0, 0}, "renderImage"}},
+        {"updateDiff",     {NULL, 2, {config->width, config->height}, {0, 0}, "updateDiff"}},
     };
+
+    for (string name : getMandelNames()) {
+        kernelSpecs.push_back({name, {NULL, 1, {config->particle_count, 0}, {128, 0}, name}});
+    }
 }
 
 void setKernelArgs() {
@@ -81,14 +158,16 @@ void setKernelArgs() {
     opencl->setKernelBufferArg("seedNoise", 2, "initState");
     opencl->setKernelBufferArg("seedNoise", 3, "initSeq");
 
-    opencl->setKernelBufferArg("mandelStep", 0, "particles");
-    opencl->setKernelBufferArg("mandelStep", 1, "count");
-    opencl->setKernelBufferArg("mandelStep", 2, "threshold");
-    opencl->setKernelBufferArg("mandelStep", 3, "path");
-    opencl->setKernelBufferArg("mandelStep", 4, "randomState");
-    opencl->setKernelBufferArg("mandelStep", 5, "randomIncrement");
-    opencl->setKernelArg("mandelStep", 6, sizeof(unsigned int), (void*)&(config->threshold_count));
-    opencl->setKernelArg("mandelStep", 7, sizeof(ViewSettings), (void*)&viewFW);
+    for (string name : getMandelNames()) {
+        opencl->setKernelBufferArg(name, 0, "particles");
+        opencl->setKernelBufferArg(name, 1, "count");
+        opencl->setKernelBufferArg(name, 2, "threshold");
+        opencl->setKernelBufferArg(name, 3, "path");
+        opencl->setKernelBufferArg(name, 4, "randomState");
+        opencl->setKernelBufferArg(name, 5, "randomIncrement");
+        opencl->setKernelArg(name, 6, sizeof(unsigned int), (void*)&(config->threshold_count));
+        opencl->setKernelArg(name, 7, sizeof(ViewSettings), (void*)&viewFW);
+    }
     
     opencl->setKernelBufferArg("initParticles", 0, "particles");
     opencl->setKernelBufferArg("initParticles", 1, "threshold");
@@ -178,11 +257,11 @@ void prepare() {
     initState = (uint64_t *)malloc(config->particle_count * sizeof(uint64_t));
     initSeq = (uint64_t *)malloc(config->particle_count * sizeof(uint64_t));
 
-    float scaleY = 1.3;
+    float scaleY = config->scale;
     viewFW = {
         scaleY / (float)config->height * (float)config->width, scaleY,
-        -0.5, 0.,
-        0., 0., 1.,
+        config->center_x, config->center_y,
+        config->theta, sin(config->theta), cos(config->theta),
         (int)config->width, (int)config->height
     };
 
@@ -201,7 +280,7 @@ void display() {
     
     displayFW();
 
-    opencl->step("mandelStep", config->frame_steps);
+    opencl->step(getMandelName(), config->frame_steps);
     opencl->step("updateDiff");
 
     if (settingsFW.showDiff) {
@@ -217,11 +296,15 @@ void display() {
     if (settingsFW.crossPollinate) {
         opencl->step("crossPollinate", 1);
     }
-    
-    opencl->readBuffer("image", pixelsFW);
+
+    if (settingsFW.updateView) {
+        opencl->readBuffer("image", pixelsFW);
+    }
+
+    opencl->flush();
 
     iterCount++;
-    stepCount += config->frame_steps * config->particle_count * 800;
+    stepCount += config->frame_steps * config->particle_count * 4000;
 
     chrono::high_resolution_clock::time_point temp = chrono::high_resolution_clock::now();
     chrono::duration<float> time_span = chrono::duration_cast<chrono::duration<float>>(temp - timePoint);

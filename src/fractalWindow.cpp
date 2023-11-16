@@ -13,7 +13,10 @@
 
 #include "coordinates.hpp"
 #include "fractalWindow.hpp"
+#include "lodepng.hpp"
 #include "opencl.hpp"
+
+using namespace std;
 
 int windowIdFW;
 uint32_t *pixelsFW;
@@ -22,7 +25,7 @@ Particle *particles;
 WindowSettings settingsFW;
 MouseState mouseFW;
 ViewSettings viewFW, defaultView;
-std::stack<ViewSettings> viewStackFW;
+stack<ViewSettings> viewStackFW;
 bool selecting = true;
 
 void showParticles() {
@@ -30,7 +33,7 @@ void showParticles() {
 
     for (int i = 0; i < config->particle_count; i++) {
         Particle particle = particles[i];
-        PixelCoordinate coord = ((FractalCoordinate){particle.prevOffset.s[0], particle.prevOffset.s[1]}).toPixel(defaultView);
+        PixelfCoordinate coord = ((FractalCoordinate){particle.prevOffset.s[0], particle.prevOffset.s[1]}).toPixelf(defaultView);
 
         if (particle.prevScore == -1) {
             glColor3f(1,0,0);
@@ -150,6 +153,36 @@ void showInfo() {
     ImGui::Text("y = %.16f", fractal.y);
 
     ImGui::Checkbox("Draw Box", &selecting);
+
+    int counts[config->threshold_count];
+    opencl->readBuffer("maximum", counts);
+    ImGui::SeparatorText("Threshold Counts");
+
+    for (int i = 0; i < config->threshold_count; i++) {
+        ImGui::Text("Threshold %d: %d", config->thresholds[i], counts[i]);
+    }
+}
+
+void showControls() {
+    ImGui::SeparatorText("Path Type");
+    bool chg = false;
+    chg |= ImGui::RadioButton("Constant", &(settingsFW.pathType), PathOptions::PATH_CONSTANT);
+    chg |= ImGui::RadioButton("Sqrt##path",     &(settingsFW.pathType), PathOptions::PATH_SQRT);
+    chg |= ImGui::RadioButton("Linear",   &(settingsFW.pathType), PathOptions::PATH_LINEAR);
+    chg |= ImGui::RadioButton("Squared##path",  &(settingsFW.pathType), PathOptions::PATH_SQUARE);
+
+    ImGui::SeparatorText("Score Type");
+    chg |= ImGui::RadioButton("None",   &(settingsFW.scoreType), ScoreOptions::SCORE_NONE);
+    chg |= ImGui::RadioButton("Sqrt##score",   &(settingsFW.scoreType), ScoreOptions::SCORE_SQRT);
+    chg |= ImGui::RadioButton("Squared##score", &(settingsFW.scoreType), ScoreOptions::SCORE_SQUARE);
+    chg |= ImGui::RadioButton("Normed", &(settingsFW.scoreType), ScoreOptions::SCORE_NORM);
+    chg |= ImGui::RadioButton("Normed Square", &(settingsFW.scoreType), ScoreOptions::SCORE_SQNORM);
+
+    if (chg) {
+        opencl->step("resetCount");
+        opencl->step("initParticles");
+        iterCount = 0;
+    }
 }
 
 void displayFW() {
@@ -162,35 +195,37 @@ void displayFW() {
     glColor3f(1, 1, 1);
     glClear( GL_COLOR_BUFFER_BIT );
 
-    glEnable (GL_TEXTURE_2D);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    
     // --------------------------- FRACTAL ---------------------------
 
-    glTexImage2D (
-        GL_TEXTURE_2D,
-        0,
-        GL_RGB,
-        settingsFW.width,
-        settingsFW.height,
-        0,
-        GL_RGB,
-        GL_UNSIGNED_INT,
-        &(pixelsFW[0])
-    );
+    if (settingsFW.updateView) {
+        glEnable (GL_TEXTURE_2D);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
-    glPushMatrix();
-    glScalef(settingsFW.zoom, settingsFW.zoom, 1.);
-    glTranslatef(-settingsFW.centerX, -settingsFW.centerY, 0.);
+        glTexImage2D (
+            GL_TEXTURE_2D,
+            0,
+            GL_RGB,
+            settingsFW.width,
+            settingsFW.height,
+            0,
+            GL_RGB,
+            GL_UNSIGNED_INT,
+            &(pixelsFW[0])
+        );
 
-    glBegin(GL_QUADS);
-        glTexCoord2f(0.0f, 0.0f); glVertex2f(-1.0, -1.0);
-        glTexCoord2f(1.0f, 0.0f); glVertex2f( 1.0, -1.0);
-        glTexCoord2f(1.0f, 1.0f); glVertex2f( 1.0,  1.0);
-        glTexCoord2f(0.0f, 1.0f); glVertex2f(-1.0,  1.0);
-    glEnd();
+        glPushMatrix();
+        glScalef(settingsFW.zoom, settingsFW.zoom, 1.);
+        glTranslatef(-settingsFW.centerX, -settingsFW.centerY, 0.);
 
-    glDisable (GL_TEXTURE_2D);
+        glBegin(GL_QUADS);
+            glTexCoord2f(0.0f, 0.0f); glVertex2f(-1.0, -1.0);
+            glTexCoord2f(1.0f, 0.0f); glVertex2f( 1.0, -1.0);
+            glTexCoord2f(1.0f, 1.0f); glVertex2f( 1.0,  1.0);
+            glTexCoord2f(0.0f, 1.0f); glVertex2f(-1.0,  1.0);
+        glEnd();
+
+        glDisable (GL_TEXTURE_2D);
+    }
 
     // --------------------------- Overlays ---------------------------
 
@@ -233,6 +268,7 @@ void displayFW() {
     ImGui::PushItemWidth(140);
 
     showInfo();
+    showControls();
 
     ImGui::End();
 
@@ -247,7 +283,7 @@ void displayFW() {
 void updateView(float scale, float centerX, float centerY, float theta) {
     fprintf(stderr, "\n\n\n\n\n\nSetting region to:\n");
     fprintf(stderr, "scale = %.3f\n", scale);
-    fprintf(stderr, "center = (%.3f, %.3f)\n", centerX, centerY);
+    fprintf(stderr, "center_x = %.3f\ncenter_y = %.3f)\n", centerX, centerY);
     fprintf(stderr, "theta = %.3f\n", theta);
 
     viewStackFW.push(ViewSettings(viewFW));
@@ -262,7 +298,9 @@ void updateView(float scale, float centerX, float centerY, float theta) {
     viewFW.cosTheta = cos(theta);
     viewFW.sinTheta = sin(theta);
 
-    opencl->setKernelArg("mandelStep", 7, sizeof(ViewSettings), (void*)&viewFW);
+    for (string name : getMandelNames()) {
+        opencl->setKernelArg(name, 7, sizeof(ViewSettings), (void*)&viewFW);
+    }
 
     opencl->step("resetCount");
     opencl->step("initParticles");
@@ -286,6 +324,31 @@ void selectRegion() {
     );
 }
 
+void writePng() {
+    char filename[200];
+
+    uint32_t h = settingsFW.height; 
+    uint32_t w = settingsFW.width; 
+
+    sprintf(filename, "images/%s_%d_%d_%.6f_%.6f_%.6f_%.6f.png", 
+        getMandelName().c_str(), settingsFW.width, settingsFW.height,
+        viewFW.theta, viewFW.centerX, viewFW.centerY, viewFW.scaleY);
+    
+    unsigned char *image8Bit = (unsigned char *)malloc(3 * w * h * sizeof(unsigned char));
+
+    for (uint32_t i = 0; i < h; i++) {
+        for (uint32_t j = 0; j < 3 * w; j++) {
+            image8Bit[3 * w * (h - i - 1) + j] = pixelsFW[3 * w * i + j] >> ((sizeof(unsigned int) - sizeof(unsigned char)) * 8);
+        }
+    }
+    
+    unsigned error = lodepng_encode24_file(filename, image8Bit, settingsFW.width, settingsFW.height);
+
+    if (error){
+        fprintf(stderr, "Encoder error %d: %s\n", error, lodepng_error_text(error));
+    }
+}
+
 void keyPressedFW(unsigned char key, int x, int y) {
     switch (key) {
         case 'a':
@@ -303,6 +366,9 @@ void keyPressedFW(unsigned char key, int x, int y) {
         case 'd':
             settingsFW.showDiff = ! settingsFW.showDiff;
             break;
+        case 'u':
+            settingsFW.updateView = ! settingsFW.updateView;
+            break;
         case 'b':
             selecting = ! selecting;
             break;
@@ -318,7 +384,11 @@ void keyPressedFW(unsigned char key, int x, int y) {
             if (!viewStackFW.empty()) {
                 viewFW = viewStackFW.top();
                 viewStackFW.pop();
-                opencl->setKernelArg("mandelStep", 7, sizeof(ViewSettings), (void*)&viewFW);
+
+                for (string name : getMandelNames()) {
+                    opencl->setKernelArg(name, 7, sizeof(ViewSettings), (void*)&viewFW);
+                }
+
                 opencl->step("resetCount");
                 opencl->step("initParticles");
                 iterCount = 0;
@@ -344,6 +414,35 @@ void keyPressedFW(unsigned char key, int x, int y) {
         case 'i':
             opencl->step("initParticles");
             break;
+        case 'W':
+            writePng();
+            break;
+        
+        case '-':
+            updateView(viewFW.scaleY * 1.1, viewFW.centerX, viewFW.centerY, viewFW.theta);
+            break;
+        case '=':
+            updateView(viewFW.scaleY / 1.1, viewFW.centerX, viewFW.centerY, viewFW.theta);
+            break;
+        case '_':
+            updateView(viewFW.scaleY * 1.01, viewFW.centerX, viewFW.centerY, viewFW.theta);
+            break;
+        case '+':
+            updateView(viewFW.scaleY / 1.01, viewFW.centerX, viewFW.centerY, viewFW.theta);
+            break;
+        
+        case '[':
+            updateView(viewFW.scaleY, viewFW.centerX, viewFW.centerY, viewFW.theta + 0.1);
+            break;
+        case ']':
+            updateView(viewFW.scaleY, viewFW.centerX, viewFW.centerY, viewFW.theta - 0.1);
+            break;
+        case '{':
+            updateView(viewFW.scaleY, viewFW.centerX, viewFW.centerY, viewFW.theta + 0.003);
+            break;
+        case '}':
+            updateView(viewFW.scaleY, viewFW.centerX, viewFW.centerY, viewFW.theta - 0.003);
+            break;
         default:
             break;
     }
@@ -358,16 +457,24 @@ void specialKeyPressedFW(int key, int x, int y) {
 
     switch (key) {
         case GLUT_KEY_RIGHT:
-            updateView(viewFW.scaleY, viewFW.centerX + 0.1 * viewFW.scaleY, viewFW.centerY, viewFW.theta);
+            updateView(viewFW.scaleY, 
+                viewFW.centerX + 0.1 * viewFW.scaleY * cos(viewFW.theta), 
+                viewFW.centerY - 0.1 * viewFW.scaleY * sin(viewFW.theta), viewFW.theta);
             break;
         case GLUT_KEY_LEFT:
-            updateView(viewFW.scaleY, viewFW.centerX - 0.1 * viewFW.scaleY, viewFW.centerY, viewFW.theta);
+            updateView(viewFW.scaleY, 
+                viewFW.centerX - 0.1 * viewFW.scaleY * cos(viewFW.theta), 
+                viewFW.centerY + 0.1 * viewFW.scaleY * sin(viewFW.theta), viewFW.theta);
             break;
         case GLUT_KEY_UP:
-            updateView(viewFW.scaleY, viewFW.centerX, viewFW.centerY + 0.1 * viewFW.scaleY, viewFW.theta);
+            updateView(viewFW.scaleY, 
+                viewFW.centerX + 0.1 * viewFW.scaleY * sin(viewFW.theta), 
+                viewFW.centerY + 0.1 * viewFW.scaleY * cos(viewFW.theta), viewFW.theta);
             break;
         case GLUT_KEY_DOWN:
-            updateView(viewFW.scaleY, viewFW.centerX, viewFW.centerY - 0.1 * viewFW.scaleY, viewFW.theta);
+            updateView(viewFW.scaleY, 
+                viewFW.centerX - 0.1 * viewFW.scaleY * sin(viewFW.theta), 
+                viewFW.centerY - 0.1 * viewFW.scaleY * cos(viewFW.theta), viewFW.theta);
             break;
         default:
             break;

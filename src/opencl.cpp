@@ -41,7 +41,7 @@ void OpenCl::prepare(vector<BufferSpec> bufferSpecs, vector<KernelSpec> kernelSp
     // Create OpenCL Context
     context = clCreateContext(NULL, 1, &device_id, NULL, NULL, &ret);
     if (ret != CL_SUCCESS)
-      fprintf(stderr, "Failed on function clCreateContext: %d\n", ret);
+        fprintf(stderr, "Failed on function clCreateContext: %d\n", ret);
 
     // Create command queue
     if (profile) {
@@ -68,18 +68,18 @@ void OpenCl::prepare(vector<BufferSpec> bufferSpecs, vector<KernelSpec> kernelSp
     // Create kernel program from source file
     program = clCreateProgramWithSource(context, 1, (const char **)&source_str, (const size_t *)&source_size, &ret);
     if (ret != CL_SUCCESS)
-      fprintf(stderr, "Failed on function clCreateProgramWithSource: %d\n", ret);
+        fprintf(stderr, "Failed on function clCreateProgramWithSource: %d\n", ret);
     
     ret = clBuildProgram(program, 1, &device_id, NULL, NULL, NULL);
     if (ret != CL_SUCCESS)
-      fprintf(stderr, "Failed on function clBuildProgram: %d\n", ret);
+        fprintf(stderr, "Failed on function clBuildProgram: %d\n", ret);
     
     // Check program build info
     size_t len = 10000;
     ret = clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, 0, NULL, &len);
     char *buffer = (char *)calloc(len, sizeof(char));
     ret = clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, len, buffer, NULL);
-    fprintf(stderr, "%s\n", buffer);
+    fprintf(stderr, "Build info:\n%s\n", buffer);
 
     // Create kernels
     for (KernelSpec kernelSpec : kernelSpecs) {
@@ -165,7 +165,11 @@ void OpenCl::step(string name, int count) {
     startTimer();
 
     for (int i = 0; i < count; i++) {
-        ret = clEnqueueNDRangeKernel(command_queue, kernel.kernel, kernel.work_dim, NULL, kernel.global_size, kernel.local_size, 0, NULL, NULL);
+        if (kernel.local_size[0] > 0) {
+            ret = clEnqueueNDRangeKernel(command_queue, kernel.kernel, kernel.work_dim, NULL, kernel.global_size, kernel.local_size, 0, NULL, NULL);
+        } else {
+            ret = clEnqueueNDRangeKernel(command_queue, kernel.kernel, kernel.work_dim, NULL, kernel.global_size, NULL, 0, NULL, NULL);
+        }
         
         if (ret != CL_SUCCESS) {
             fprintf(stderr, "Failed executing kernel [%s]: %d\n", name.c_str(), ret);
@@ -175,7 +179,7 @@ void OpenCl::step(string name, int count) {
 
     getTime();
     fprintf(stderr, "%s ", name.c_str());
-    for (int i = strlen(name.c_str()); i < 20; i++) {
+    for (int i = strlen(name.c_str()); i < 30; i++) {
         fprintf(stderr, " ");
     }
 

@@ -11,6 +11,23 @@ typedef struct Particle {
     float score, prevScore;
 } Particle;
 
+enum PathOptions {
+    PATH_CONSTANT,
+    PATH_SQRT,
+    PATH_LINEAR,
+    PATH_SQUARE,
+};
+
+enum ScoreOptions {
+    SCORE_NONE,
+    SCORE_SQRT,
+    SCORE_SQUARE,
+    SCORE_NORM,
+    SCORE_SQNORM,
+};
+
+std::string getMandelName();
+
 typedef struct WindowSettings {
     uint32_t width, height;
     uint32_t windowW, windowH;
@@ -19,6 +36,9 @@ typedef struct WindowSettings {
     bool showParticles = false;
     bool showDiff = false;
     bool crossPollinate = false;
+    int pathType = PathOptions::PATH_LINEAR;
+    int scoreType = ScoreOptions::SCORE_SQRT;
+    bool updateView = true;
 } WindowSettings;
 
 typedef struct MouseState {
@@ -48,5 +68,7 @@ extern Config *config;
 extern float frameTime;
 extern uint32_t iterCount;
 extern uint64_t stepCount;
+
+extern std::vector<std::string> getMandelNames();
 
 #endif
