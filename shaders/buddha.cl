@@ -351,6 +351,12 @@ inline int getScore(
     return score;
 }
 
+inline float getRange(uint iterCount) {
+    return clamp(17 * pow(1 + iterCount, -1.6), 1e-5, 0.1);
+    // def rad(x, a=17.12129682, b=-1.5):
+    // return np.clip(a * np.clip(x, 1, None)**b, 1e-6, 0.1)
+}
+
 inline void mutateParticle(
     Particle *particle,
     global float2 *path,
@@ -367,9 +373,12 @@ inline void mutateParticle(
 
     float2 newOffset;
     if (uniformRand(randomState, randomIncrement, x) < 0.95) {
+        float range = getRange(particle->iterCount);
+        // float range = 0.1;
+
         newOffset = (float2)(
-            particle->prevOffset.x + 0.01 * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f),// / (1 + particle->iterCount),
-            particle->prevOffset.y + 0.01 * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f)// / (1 + particle->iterCount)
+            particle->prevOffset.x + range * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f),// / (1 + particle->iterCount),
+            particle->prevOffset.y + range * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f)// / (1 + particle->iterCount)
         );
     } else {
         newOffset = getNewPos(randomState, randomIncrement, x);
@@ -532,12 +541,22 @@ __kernel void findMax2(global unsigned int *maxima, global unsigned int *maximum
  * Rendering
  */
 
+// __constant float COLOR_SCHEME[4][3] = {
+//     {0.2, 0.0, 0.4,},
+//     {0.0, 0.4, 0.6,},
+//     {0.8, 0.6, 0.0,},
+//     {0.1, 0.0, 0.2,},
+// };
+
+// Green-blue colorscheme
 __constant float COLOR_SCHEME[4][3] = {
-    {0.2, 0.0, 0.4,},
-    {0.0, 0.4, 0.6,},
-    {0.8, 0.6, 0.0,},
+    {0.2, 0.3, 0.4,},
+    {0.0, 0.4, 0.3,},
+    {0.3, 0.4, 0.0,},
     {0.1, 0.0, 0.2,},
 };
+
+// __constant uint CLAMPS[4] = {50, 50, 200};
 
 __constant float IMAGE_MAX = 4294967295.0;
 
@@ -561,6 +580,8 @@ __constant float IMAGE_MAX = 4294967295.0;
         image[imageOffset + j] = 0;
 
         for (uint i = 0; i < thresholdCount; i++) {
+        // uint i = 1;
+            // float countFraction = (float)max(maximum[i] / CLAMPS[i], count[i * pixelCount + pixelOffset]) / (float)maximum[i];
             float countFraction = (float)count[i * pixelCount + pixelOffset] / (float)maximum[i];
             image[imageOffset + j] += (int)(COLOR_SCHEME[i][j] * sqrt(countFraction) * IMAGE_MAX);
         }
