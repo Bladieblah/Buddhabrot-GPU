@@ -17,22 +17,7 @@
 #include "fractalWindow.hpp"
 #include "lodepng.hpp"
 #include "opencl.hpp"
-
-// namespace ImPlot {
-//     template <typename T>
-//     void PlotBars(const char* label_id, const T* xs, const T* ys, int count, double *bar_size, ImPlotBarsFlags flags, int offset, int stride) {
-//         if (ImHasFlag(flags, ImPlotBarsFlags_Horizontal)) {
-//             GetterXY<IndexerIdx<T>,IndexerIdx<T>> getter1(IndexerIdx<T>(xs,count,offset,stride),IndexerIdx<T>(ys,count,offset,stride),count);
-//             GetterXY<IndexerConst, IndexerIdx<T>> getter2(IndexerConst(0),IndexerIdx<T>(ys,count,offset,stride),count);
-//             PlotBarsHEx(label_id, getter1, getter2, bar_size, flags);
-//         }
-//         else {
-//             GetterXY<IndexerIdx<T>,IndexerIdx<T>> getter1(IndexerIdx<T>(xs,count,offset,stride),IndexerIdx<T>(ys,count,offset,stride),count);
-//             GetterXY<IndexerIdx<T>,IndexerConst>  getter2(IndexerIdx<T>(xs,count,offset,stride),IndexerConst(0),count);
-//             PlotBarsVEx(label_id, getter1, getter2, bar_size, flags);
-//         }
-//     }
-// }
+#include "plots.hpp"
 
 using namespace std;
 
@@ -215,35 +200,31 @@ void plotParticleScores() {
         readParticles = true;
     }
 
-    unsigned int xs[particleHistBins];
-    unsigned int ys[particleHistBins];
+    double bins[particleHistBins + 1];
+    double counts[particleHistBins];
 
     double delta = log(config->thresholds[config->threshold_count - 1] + 1) / (particleHistBins - 1);
     for (size_t i = 0; i < particleHistBins; i++) {
-        // xs[i] = exp(i * delta);
-        xs[i] = i;
-        ys[i] = 0;
+        bins[i+1] = exp(i * delta);
+        counts[i] = 0;
     }
 
     for (size_t i = 0; i < config->particle_count; i++) {
         double c = particles[i].bestIter;
         if (c == 0) {
-            ys[0]++;
+            counts[0]++;
             continue;
         }
 
         size_t j = fmin(log(c) / delta, particleHistBins - 2);
-        ys[j + 1]++;
+        counts[j + 1]++;
     }
-
-    // for ()
 
 
     if (ImPlot::BeginPlot("Bar Plot")) {
-        // ImPlot::SetupAxisScale(ImAxis_X1, ImPlotScale_Log10);
+        ImPlot::SetupAxisScale(ImAxis_X1, ImPlotScale_Log10);
         ImPlot::SetupAxisScale(ImAxis_Y1, ImPlotScale_Log10);
-        ImPlot::PlotBars("", xs, ys, particleHistBins, 1.);
-        // ImPlot::PlotBars("Horizontal",data,10,0.4,1,ImPlotBarsFlags_Horizontal);
+        ImPlot::PlotHistogram("", bins, counts, particleHistBins);
         ImPlot::EndPlot();
     }
 }
