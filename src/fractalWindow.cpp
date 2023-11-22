@@ -194,7 +194,7 @@ void showControls() {
     }
 }
 
-void plotParticleScores() {
+void plotParticleIterCounts() {
     if (!readParticles) {
         opencl->readBuffer("particles", particles);
         readParticles = true;
@@ -220,8 +220,48 @@ void plotParticleScores() {
         counts[j + 1]++;
     }
 
+    if (ImPlot::BeginPlot("Particle Itercounts")) {
+        ImPlot::SetupAxisScale(ImAxis_X1, ImPlotScale_Log10);
+        ImPlot::SetupAxisScale(ImAxis_Y1, ImPlotScale_Log10);
+        ImPlot::PlotHistogram("", bins, counts, particleHistBins);
+        ImPlot::EndPlot();
+    }
+}
 
-    if (ImPlot::BeginPlot("Bar Plot")) {
+void plotParticleScores() {
+    if (!readParticles) {
+        opencl->readBuffer("particles", particles);
+        readParticles = true;
+    }
+
+    double maxScore = 0;
+    for (size_t i = 0; i < config->particle_count; i++) {
+        if (particles[i].prevScore > maxScore) {
+            maxScore = particles[i].prevScore;
+        }
+    }
+
+    double bins[particleHistBins + 1];
+    double counts[particleHistBins];
+
+    double delta = log(maxScore) / (particleHistBins - 1);
+    for (size_t i = 0; i < particleHistBins; i++) {
+        bins[i+1] = exp(i * delta);
+        counts[i] = 0;
+    }
+
+    for (size_t i = 0; i < config->particle_count; i++) {
+        double c = particles[i].prevScore;
+        if (c == 0) {
+            counts[0]++;
+            continue;
+        }
+
+        size_t j = fmin(log(c) / delta, particleHistBins - 2);
+        counts[j + 1]++;
+    }
+
+    if (ImPlot::BeginPlot("Particle Scores")) {
         ImPlot::SetupAxisScale(ImAxis_X1, ImPlotScale_Log10);
         ImPlot::SetupAxisScale(ImAxis_Y1, ImPlotScale_Log10);
         ImPlot::PlotHistogram("", bins, counts, particleHistBins);
@@ -315,7 +355,12 @@ void displayFW() {
 
     showInfo();
     showControls();
-    plotParticleScores();
+
+    if (ImGui::TreeNode("Plots")) {
+        plotParticleIterCounts();
+        plotParticleScores();
+        ImGui::TreePop();
+    }
 
     ImGui::End();
 
