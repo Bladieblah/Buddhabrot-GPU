@@ -199,7 +199,7 @@ inline int2 screenToPixel(float2 screenCoord, ViewSettings view) {
 typedef struct Particle {
     float2 pos;
     float2 offset, prevOffset;
-    unsigned int iterCount;
+    unsigned int iterCount, bestIter;
     float score, prevScore;
 } Particle;
 
@@ -316,6 +316,7 @@ inline void resetParticle(
     float2 newOffset = getNewPos(randomState, randomIncrement, x);
 
     particle->iterCount = 1;
+    particle->bestIter = 1;
     particle->pos = newOffset;
     particle->offset = newOffset;
     particle->prevOffset = newOffset;
@@ -369,6 +370,7 @@ inline void mutateParticle(
     if (particle->score >= particle->prevScore || particle->score / particle->prevScore > uniformRand(randomState, randomIncrement, x)) {
         particle->prevScore = particle->score;
         particle->prevOffset = particle->offset;
+        particle->bestIter = particle->iterCount;
     }
 
     float2 newOffset;
@@ -377,8 +379,8 @@ inline void mutateParticle(
         // float range = 0.1;
 
         newOffset = (float2)(
-            particle->prevOffset.x + range * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f),// / (1 + particle->iterCount),
-            particle->prevOffset.y + range * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f)// / (1 + particle->iterCount)
+            particle->prevOffset.x + range * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f),
+            particle->prevOffset.y + range * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f)
         );
     } else {
         newOffset = getNewPos(randomState, randomIncrement, x);

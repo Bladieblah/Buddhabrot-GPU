@@ -18,6 +18,22 @@
 #include "lodepng.hpp"
 #include "opencl.hpp"
 
+// namespace ImPlot {
+//     template <typename T>
+//     void PlotBars(const char* label_id, const T* xs, const T* ys, int count, double *bar_size, ImPlotBarsFlags flags, int offset, int stride) {
+//         if (ImHasFlag(flags, ImPlotBarsFlags_Horizontal)) {
+//             GetterXY<IndexerIdx<T>,IndexerIdx<T>> getter1(IndexerIdx<T>(xs,count,offset,stride),IndexerIdx<T>(ys,count,offset,stride),count);
+//             GetterXY<IndexerConst, IndexerIdx<T>> getter2(IndexerConst(0),IndexerIdx<T>(ys,count,offset,stride),count);
+//             PlotBarsHEx(label_id, getter1, getter2, bar_size, flags);
+//         }
+//         else {
+//             GetterXY<IndexerIdx<T>,IndexerIdx<T>> getter1(IndexerIdx<T>(xs,count,offset,stride),IndexerIdx<T>(ys,count,offset,stride),count);
+//             GetterXY<IndexerIdx<T>,IndexerConst>  getter2(IndexerIdx<T>(xs,count,offset,stride),IndexerConst(0),count);
+//             PlotBarsVEx(label_id, getter1, getter2, bar_size, flags);
+//         }
+//     }
+// }
+
 using namespace std;
 
 int windowIdFW;
@@ -29,9 +45,15 @@ MouseState mouseFW;
 ViewSettings viewFW, defaultView;
 stack<ViewSettings> viewStackFW;
 bool selecting = true;
+bool readParticles = false;
+
+const size_t particleHistBins = 50;
 
 void showParticles() {
-    opencl->readBuffer("particles", particles);
+    if (!readParticles) {
+        opencl->readBuffer("particles", particles);
+        readParticles = true;
+    }
 
     for (int i = 0; i < config->particle_count; i++) {
         Particle particle = particles[i];
@@ -188,11 +210,39 @@ void showControls() {
 }
 
 void plotParticleScores() {
-    unsigned int xs[5] = {0, 1, 2, 3, 4};
-    unsigned int ys[5] = {0, 1, 2, 3, 4};
+    if (!readParticles) {
+        opencl->readBuffer("particles", particles);
+        readParticles = true;
+    }
+
+    unsigned int xs[particleHistBins];
+    unsigned int ys[particleHistBins];
+
+    double delta = log(config->thresholds[config->threshold_count - 1] + 1) / (particleHistBins - 1);
+    for (size_t i = 0; i < particleHistBins; i++) {
+        // xs[i] = exp(i * delta);
+        xs[i] = i;
+        ys[i] = 0;
+    }
+
+    for (size_t i = 0; i < config->particle_count; i++) {
+        double c = particles[i].bestIter;
+        if (c == 0) {
+            ys[0]++;
+            continue;
+        }
+
+        size_t j = fmin(log(c) / delta, particleHistBins - 2);
+        ys[j + 1]++;
+    }
+
+    // for ()
+
 
     if (ImPlot::BeginPlot("Bar Plot")) {
-        ImPlot::PlotBars("Particle scores", xs, ys, 5, 1.);
+        // ImPlot::SetupAxisScale(ImAxis_X1, ImPlotScale_Log10);
+        ImPlot::SetupAxisScale(ImAxis_Y1, ImPlotScale_Log10);
+        ImPlot::PlotBars("", xs, ys, particleHistBins, 1.);
         // ImPlot::PlotBars("Horizontal",data,10,0.4,1,ImPlotBarsFlags_Horizontal);
         ImPlot::EndPlot();
     }
@@ -207,6 +257,8 @@ void displayFW() {
     glClearColor( 0, 0, 0, 1 );
     glColor3f(1, 1, 1);
     glClear( GL_COLOR_BUFFER_BIT );
+
+    readParticles = false;
 
     // --------------------------- FRACTAL ---------------------------
 

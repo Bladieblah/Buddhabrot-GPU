@@ -7,7 +7,7 @@
 typedef struct Particle {
     cl_float2 pos;
     cl_float2 offset, prevOffset;
-    unsigned int iterCount;
+    unsigned int iterCount, bestIter;
     float score, prevScore;
 } Particle;
 
