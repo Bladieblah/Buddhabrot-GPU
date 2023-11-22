@@ -5,7 +5,7 @@
 
 #include <OpenGL/gl.h>
 #include <OpenGL/glu.h>
-#include <GLUT/glut.h>
+#include <GL/freeglut.h>
 
 #include "../imgui/imgui.h"
 #include "../imgui/backends/imgui_impl_glut.h"
@@ -572,6 +572,7 @@ void createFractalWindow(char *name, uint32_t width, uint32_t height) {
 
     glutKeyboardUpFunc(ImGui_ImplGLUT_KeyboardUpFunc);
     glutSpecialUpFunc(ImGui_ImplGLUT_SpecialUpFunc);
+    glutMouseWheelFunc(ImGui_ImplGLUT_MouseWheelFunc);
     
     glutKeyboardFunc(&keyPressedFW);
     glutSpecialFunc(&specialKeyPressedFW);

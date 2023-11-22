@@ -1,6 +1,6 @@
 [submodule "imgui"]
 	path = imgui
-	url = https://github.com/ocornut/imgui.git
+	url = https://github.com/ocornut/imgui.git?commit=cb5542bce5eb20465a64063c686d9f293ba125e9
 [submodule "implot"]
 	path = implot
 	url = https://github.com/epezent/implot.git
