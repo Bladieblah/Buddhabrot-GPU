@@ -11,6 +11,8 @@
 #include "../imgui/backends/imgui_impl_glut.h"
 #include "../imgui/backends/imgui_impl_opengl2.h"
 
+#include "../implot/implot.h"
+
 #include "coordinates.hpp"
 #include "fractalWindow.hpp"
 #include "lodepng.hpp"
@@ -185,6 +187,17 @@ void showControls() {
     }
 }
 
+void plotParticleScores() {
+    unsigned int xs[5] = {0, 1, 2, 3, 4};
+    unsigned int ys[5] = {0, 1, 2, 3, 4};
+
+    if (ImPlot::BeginPlot("Bar Plot")) {
+        ImPlot::PlotBars("Particle scores", xs, ys, 5, 1.);
+        // ImPlot::PlotBars("Horizontal",data,10,0.4,1,ImPlotBarsFlags_Horizontal);
+        ImPlot::EndPlot();
+    }
+}
+
 void displayFW() {
     // --------------------------- RESET ---------------------------
     glutSetWindow(windowIdFW);
@@ -261,14 +274,15 @@ void displayFW() {
     ImGui_ImplGLUT_NewFrame();
     ImGui::NewFrame();
 
-    ImGui::SetNextWindowSize(ImVec2(220, 0));
-    ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - 200, 0));
+    ImGui::SetNextWindowSize(ImVec2(320, 0));
+    ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - 320, 0));
 
     ImGui::Begin("Info");
     ImGui::PushItemWidth(140);
 
     showInfo();
     showControls();
+    plotParticleScores();
 
     ImGui::End();
 
@@ -278,6 +292,8 @@ void displayFW() {
     ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
     glFlush();
     glutSwapBuffers();
+
+
 }
 
 void updateView(float scale, float centerX, float centerY, float theta) {
@@ -490,27 +506,30 @@ void mousePressedFW(int button, int state, int x, int y) {
     ImGuiIO& io = ImGui::GetIO();
     ImGui_ImplGLUT_MouseFunc(button, state, x, y);
 
-    if (!io.WantCaptureMouse && button == GLUT_RIGHT_BUTTON) {
-        if (state == GLUT_DOWN) {
+    if (!io.WantCaptureMouse) {
+        if (state == GLUT_DOWN && button == GLUT_RIGHT_BUTTON) {
             translateCamera((ScreenCoordinate){x, y});
+        }
+
+        mouseFW.state = state;
+
+        if (state == GLUT_DOWN) {
+            mouseFW.xDown = x;
+            mouseFW.yDown = y;
         }
 
         return;
     }
-
-    mouseFW.state = state;
-
-    if (state == GLUT_DOWN) {
-        mouseFW.xDown = x;
-        mouseFW.yDown = y;
-    }
 }
 
 void mouseMovedFW(int x, int y) {
+    ImGuiIO& io = ImGui::GetIO();
     ImGui_ImplGLUT_MotionFunc(x, y);
 
-    mouseFW.x = x;
-    mouseFW.y = y;
+    if (!io.WantCaptureMouse) {
+        mouseFW.x = x;
+        mouseFW.y = y;
+    }
 }
 
 void onReshapeFW(int w, int h) {
@@ -543,6 +562,7 @@ void createFractalWindow(char *name, uint32_t width, uint32_t height) {
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    ImPlot::CreateContext();
     ImGuiIO &io = ImGui::GetIO(); (void)io;
     io.IniFilename = NULL;
 
