@@ -555,11 +555,10 @@ __kernel void findMax2(global unsigned int *maxima, global unsigned int *maximum
  * Rendering
  */
 
-__constant float COLOR_SCHEME[4][3] = {
+__constant float COLOR_SCHEME[3][3] = {
     {0.2, 0.0, 0.4,},
     {0.0, 0.4, 0.6,},
     {0.8, 0.6, 0.0,},
-    {0.1, 0.0, 0.2,},
 };
 
 // Green-blue colorscheme
@@ -568,6 +567,15 @@ __constant float COLOR_SCHEME[4][3] = {
 //     {0.0, 0.4, 0.3,},
 //     {0.3, 0.4, 0.0,},
 //     {0.1, 0.0, 0.2,},
+// };
+
+// Many layers!
+// __constant float COLOR_SCHEME[5][3] = {
+//     {0.3, 0.0, 0.3,},
+//     {0.3, 0.3, 0.0,},
+//     {0.0, 0.3, 0.0,},
+//     {0.3, 0.3, 0.0,},
+//     {0.0, 0.0, 0.3,},
 // };
 
 // __constant uint CLAMPS[4] = {50, 50, 200};

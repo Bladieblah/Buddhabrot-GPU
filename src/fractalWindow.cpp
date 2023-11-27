@@ -374,9 +374,9 @@ void displayFW() {
 
 void updateView(float scale, float centerX, float centerY, float theta) {
     fprintf(stderr, "\n\n\n\n\n\nSetting region to:\n");
-    fprintf(stderr, "scale = %.3f\n", scale);
-    fprintf(stderr, "center_x = %.3f\ncenter_y = %.3f\n", centerX, centerY);
-    fprintf(stderr, "theta = %.3f\n", theta);
+    fprintf(stderr, "scale = %.5f\n", scale);
+    fprintf(stderr, "center_x = %.5f\ncenter_y = %.5f\n", centerX, centerY);
+    fprintf(stderr, "theta = %.4f\n", theta);
 
     viewStackFW.push(ViewSettings(viewFW));
 
@@ -398,6 +398,7 @@ void updateView(float scale, float centerX, float centerY, float theta) {
     opencl->step("initParticles");
 
     prevMax = 0;
+    stepCount = 0;
 }
 
 void selectRegion() {

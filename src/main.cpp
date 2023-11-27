@@ -44,9 +44,9 @@ vector<BufferSpec> bufferSpecs;
 void createBufferSpecs() {
     bufferSpecs = {
         {"image",     {NULL, 3 * config->width * config->height * sizeof(uint32_t)}},
-        {"count",     {NULL, 3 * config->width * config->height * sizeof(uint32_t)}},
-        {"prevCount", {NULL, 3 * config->width * config->height * sizeof(uint32_t)}},
-        {"countDiff", {NULL, 3 * config->width * config->height * sizeof(uint32_t)}},
+        {"count",     {NULL, config->threshold_count * config->width * config->height * sizeof(uint32_t)}},
+        {"prevCount", {NULL, config->threshold_count * config->width * config->height * sizeof(uint32_t)}},
+        {"countDiff", {NULL, config->threshold_count * config->width * config->height * sizeof(uint32_t)}},
         {"particles", {NULL, config->particle_count * sizeof(Particle)}},
         {"path",      {NULL, config->particle_count * config->thresholds[config->threshold_count - 1] * sizeof(FractalCoord)}},
         {"threshold", {NULL, config->threshold_count * sizeof(uint32_t)}},
