@@ -247,7 +247,7 @@ void plotParticleScores() {
     double delta = log(maxScore) / (particleHistBins - 1);
     for (size_t i = 0; i < particleHistBins; i++) {
         bins[i+1] = exp(i * delta);
-        counts[i] = 0;
+        counts[i] = 0.001;
     }
 
     for (size_t i = 0; i < config->particle_count; i++) {

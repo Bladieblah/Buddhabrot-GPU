@@ -353,12 +353,13 @@ inline int getScore(
 }
 
 inline float getRange(uint iterCount) {
-    return clamp(17 * pow(1 + iterCount, -1.6), 1e-5, 0.1);
+    return clamp(17 * pow(1 + iterCount, -2.), 1e-7, 0.1);
     // def rad(x, a=17.12129682, b=-1.5):
     // return np.clip(a * np.clip(x, 1, None)**b, 1e-6, 0.1)
 }
 
 inline void mutateParticle(
+    global Particle *particles,
     Particle *particle,
     global float2 *path,
     unsigned int pathStart,
@@ -383,7 +384,18 @@ inline void mutateParticle(
             particle->prevOffset.y + range * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f)
         );
     } else {
-        newOffset = getNewPos(randomState, randomIncrement, x);
+        const unsigned int nParticles = get_global_size(0);
+        const int y = randint(randomState, randomIncrement, x, nParticles);
+        float threshold = (particles[y].prevScore / (particle->prevScore + 1) - 5) * 0.2;
+        if (uniformRand(randomState, randomIncrement, x) < threshold) {
+            float range = getRange(particles[y].iterCount);
+            newOffset = (float2)(
+                particles[y].prevOffset.x + range * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f),
+                particles[y].prevOffset.y + range * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f)
+            );
+        } else {
+            newOffset = getNewPos(randomState, randomIncrement, x);
+        }
     }
 
     particle->pos = newOffset;
@@ -486,7 +498,7 @@ __kernel void mandelStep_##PATH_EXT##_##SCORE_EXT( \
             int thresholdIndex = matchThreshold(tmp, threshold, thresholdCount); \
             addPath_##PATH_EXT(&tmp, path, count, threshold, thresholdCount, pathIndex, thresholdIndex, view); \
             SCORE_##SCORE_EXT \
-            mutateParticle(&tmp, path, pathIndex, randomState, randomIncrement, x, view); \
+            mutateParticle(particles, &tmp, path, pathIndex, randomState, randomIncrement, x, view); \
         } \
 \
         else if (tmp.iterCount >= maxLength) { \
@@ -614,37 +626,5 @@ __kernel void updateDiff(
         ind = i * pixelCount + W * y + x;
         countDiff[ind] = countDiff[ind] * alpha + count[ind] - prevCount[ind];
         prevCount[ind] = count[ind];
-    }
-}
-
-__kernel void crossPollinate(
-    global Particle *particles,
-    global float2 *path,
-    global unsigned int *thresholds,
-    global ulong *randomState,
-    global ulong *randomIncrement,
-    unsigned int thresholdCount,
-    ViewSettings view
-) {
-    const int x = get_global_id(0);
-    const unsigned int nParticles = get_global_size(0);
-
-    const unsigned int maxLength = thresholds[thresholdCount - 1];
-    const unsigned int pathIndex = x * maxLength;
-    const int y = randint(randomState, randomIncrement, x, nParticles);
-
-    if (particles[x].prevScore > 10 || particles[y].prevScore < 10) {
-        return;
-    }
-
-    float threshold = (particles[y].prevScore / (particles[x].prevScore + 1) - 5) * 0.2;
-
-    if (uniformRand(randomState, randomIncrement, x) < threshold) {
-        particles[x] = Particle(particles[y]);
-
-        particles[x].pos = particles[x].offset;
-        particles[x].iterCount = 1;
-
-        path[pathIndex] = particles[x].offset;
     }
 }

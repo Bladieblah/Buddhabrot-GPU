@@ -137,7 +137,6 @@ void createKernelSpecs() {
     kernelSpecs = {
         {"seedNoise",      {NULL, 1, {config->particle_count, 0}, {128, 0}, "seedNoise"}},
         {"initParticles",  {NULL, 1, {config->particle_count, 0}, {128, 0}, "initParticles"}},
-        {"crossPollinate", {NULL, 1, {config->particle_count, 0}, {128, 0}, "crossPollinate"}},
         {"resetCount",     {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {0, 0}, "resetCount"}},
         {"findMax1",       {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {0, 0}, "findMax1"}},
         {"findMax2",       {NULL, 1, {config->threshold_count, 0}, {config->threshold_count, 0}, "findMax2"}},
@@ -206,14 +205,6 @@ void setKernelArgs() {
     opencl->setKernelBufferArg("updateDiff", 2, "countDiff");
     opencl->setKernelArg("updateDiff", 3, sizeof(float), (void*)&(config->alpha));
     opencl->setKernelArg("updateDiff", 4, sizeof(unsigned int), (void*)&(config->threshold_count));
-    
-    opencl->setKernelBufferArg("crossPollinate", 0, "particles");
-    opencl->setKernelBufferArg("crossPollinate", 1, "path");
-    opencl->setKernelBufferArg("crossPollinate", 2, "threshold");
-    opencl->setKernelBufferArg("crossPollinate", 3, "randomState");
-    opencl->setKernelBufferArg("crossPollinate", 4, "randomIncrement");
-    opencl->setKernelArg("crossPollinate", 5, sizeof(unsigned int), (void*)&(config->threshold_count));
-    opencl->setKernelArg("crossPollinate", 6, sizeof(ViewSettings), (void*)&viewFW);
 }
 
 void initPcg() {
@@ -291,10 +282,6 @@ void display() {
         opencl->step("findMax1");
         opencl->step("findMax2");
         opencl->step("renderImage");
-    }
-
-    if (settingsFW.crossPollinate) {
-        opencl->step("crossPollinate", 1);
     }
 
     if (settingsFW.updateView) {
