@@ -36,8 +36,8 @@ typedef struct WindowSettings {
     bool showParticles = false;
     bool showDiff = false;
     bool crossPollinate = false;
-    int pathType = PathOptions::PATH_LINEAR;
-    int scoreType = ScoreOptions::SCORE_SQRT;
+    int pathType = PathOptions::PATH_SQUARE;
+    int scoreType = ScoreOptions::SCORE_SQUARE;
     bool updateView = true;
 } WindowSettings;
 
@@ -64,6 +64,9 @@ extern WindowSettings settingsFW;
 extern uint32_t *pixelsFW;
 extern OpenCl *opencl;
 extern Config *config;
+extern uint32_t *maximumCounts;
+
+extern uint32_t prevMax;
 
 extern float frameTime;
 extern uint32_t iterCount;

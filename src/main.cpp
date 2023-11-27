@@ -36,6 +36,9 @@ typedef struct FractalCoord {
 
 OpenCl *opencl;
 uint64_t *initState, *initSeq;
+uint32_t *maximumCounts;
+
+uint32_t prevMax = 0;
 
 vector<BufferSpec> bufferSpecs;
 void createBufferSpecs() {
@@ -248,6 +251,8 @@ void prepare() {
     initState = (uint64_t *)malloc(config->particle_count * sizeof(uint64_t));
     initSeq = (uint64_t *)malloc(config->particle_count * sizeof(uint64_t));
 
+    maximumCounts = (uint32_t *)malloc(config->threshold_count * sizeof(uint32_t));
+
     float scaleY = config->scale;
     viewFW = {
         scaleY / (float)config->height * (float)config->width, scaleY,
@@ -271,6 +276,11 @@ void display() {
     
     displayFW();
 
+    if (maximumCounts[config->threshold_count - 1] - prevMax > config->reset_count) {
+        prevMax = maximumCounts[config->threshold_count - 1];
+        opencl->step("initParticles");
+    }
+
     opencl->step(getMandelName(), config->frame_steps);
     opencl->step("updateDiff");
 
@@ -283,6 +293,8 @@ void display() {
         opencl->step("findMax2");
         opencl->step("renderImage");
     }
+    
+    opencl->readBuffer("maximum", maximumCounts);
 
     if (settingsFW.updateView) {
         opencl->readBuffer("image", pixelsFW);

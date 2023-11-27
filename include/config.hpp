@@ -16,6 +16,8 @@ public:
     unsigned int threshold_count = 3;
     unsigned int thresholds[3] = {250, 500, 1000};//, 2000, 4000};
 
+    unsigned int reset_count = 10000000;
+
     unsigned int width = 1080;
     unsigned int height = 720;
     unsigned int maximum_size = 32;
@@ -48,6 +50,8 @@ private:
         {"threshold2", {'i', (void *)&(thresholds[2])}},
         // {"threshold3", {'i', (void *)&(thresholds[3])}},
         // {"threshold4", {'i', (void *)&(thresholds[4])}},
+        
+        {"reset_count", {'i', (void *)&(reset_count)}},
 
         {"width", {'i', (void *)&width}},
         {"height", {'i', (void *)&height}},

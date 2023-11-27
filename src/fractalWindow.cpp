@@ -163,12 +163,10 @@ void showInfo() {
 
     ImGui::Checkbox("Draw Box", &selecting);
 
-    int counts[config->threshold_count];
-    opencl->readBuffer("maximum", counts);
     ImGui::SeparatorText("Threshold Counts");
 
     for (int i = 0; i < config->threshold_count; i++) {
-        ImGui::Text("Threshold %d: %d", config->thresholds[i], counts[i]);
+        ImGui::Text("Threshold %d: %d", config->thresholds[i], maximumCounts[i]);
     }
 }
 
@@ -398,6 +396,8 @@ void updateView(float scale, float centerX, float centerY, float theta) {
 
     opencl->step("resetCount");
     opencl->step("initParticles");
+
+    prevMax = 0;
 }
 
 void selectRegion() {
