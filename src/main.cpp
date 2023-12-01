@@ -36,14 +36,17 @@ typedef struct FractalCoord {
 
 OpenCl *opencl;
 uint64_t *initState, *initSeq;
+uint32_t *maximumCounts;
+
+uint32_t prevMax = 0;
 
 vector<BufferSpec> bufferSpecs;
 void createBufferSpecs() {
     bufferSpecs = {
         {"image",     {NULL, 3 * config->width * config->height * sizeof(uint32_t)}},
-        {"count",     {NULL, 3 * config->width * config->height * sizeof(uint32_t)}},
-        {"prevCount", {NULL, 3 * config->width * config->height * sizeof(uint32_t)}},
-        {"countDiff", {NULL, 3 * config->width * config->height * sizeof(uint32_t)}},
+        {"count",     {NULL, config->threshold_count * config->width * config->height * sizeof(uint32_t)}},
+        {"prevCount", {NULL, config->threshold_count * config->width * config->height * sizeof(uint32_t)}},
+        {"countDiff", {NULL, config->threshold_count * config->width * config->height * sizeof(uint32_t)}},
         {"particles", {NULL, config->particle_count * sizeof(Particle)}},
         {"path",      {NULL, config->particle_count * config->thresholds[config->threshold_count - 1] * sizeof(FractalCoord)}},
         {"threshold", {NULL, config->threshold_count * sizeof(uint32_t)}},
@@ -137,7 +140,6 @@ void createKernelSpecs() {
     kernelSpecs = {
         {"seedNoise",      {NULL, 1, {config->particle_count, 0}, {128, 0}, "seedNoise"}},
         {"initParticles",  {NULL, 1, {config->particle_count, 0}, {128, 0}, "initParticles"}},
-        {"crossPollinate", {NULL, 1, {config->particle_count, 0}, {128, 0}, "crossPollinate"}},
         {"resetCount",     {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {0, 0}, "resetCount"}},
         {"findMax1",       {NULL, 1, {config->threshold_count * maximaKernelSize, 0}, {0, 0}, "findMax1"}},
         {"findMax2",       {NULL, 1, {config->threshold_count, 0}, {config->threshold_count, 0}, "findMax2"}},
@@ -206,14 +208,6 @@ void setKernelArgs() {
     opencl->setKernelBufferArg("updateDiff", 2, "countDiff");
     opencl->setKernelArg("updateDiff", 3, sizeof(float), (void*)&(config->alpha));
     opencl->setKernelArg("updateDiff", 4, sizeof(unsigned int), (void*)&(config->threshold_count));
-    
-    opencl->setKernelBufferArg("crossPollinate", 0, "particles");
-    opencl->setKernelBufferArg("crossPollinate", 1, "path");
-    opencl->setKernelBufferArg("crossPollinate", 2, "threshold");
-    opencl->setKernelBufferArg("crossPollinate", 3, "randomState");
-    opencl->setKernelBufferArg("crossPollinate", 4, "randomIncrement");
-    opencl->setKernelArg("crossPollinate", 5, sizeof(unsigned int), (void*)&(config->threshold_count));
-    opencl->setKernelArg("crossPollinate", 6, sizeof(ViewSettings), (void*)&viewFW);
 }
 
 void initPcg() {
@@ -257,6 +251,8 @@ void prepare() {
     initState = (uint64_t *)malloc(config->particle_count * sizeof(uint64_t));
     initSeq = (uint64_t *)malloc(config->particle_count * sizeof(uint64_t));
 
+    maximumCounts = (uint32_t *)malloc(config->threshold_count * sizeof(uint32_t));
+
     float scaleY = config->scale;
     viewFW = {
         scaleY / (float)config->height * (float)config->width, scaleY,
@@ -280,6 +276,11 @@ void display() {
     
     displayFW();
 
+    if (maximumCounts[config->threshold_count - 1] - prevMax > config->reset_count) {
+        prevMax = maximumCounts[config->threshold_count - 1];
+        opencl->step("initParticles");
+    }
+
     opencl->step(getMandelName(), config->frame_steps);
     opencl->step("updateDiff");
 
@@ -292,10 +293,8 @@ void display() {
         opencl->step("findMax2");
         opencl->step("renderImage");
     }
-
-    if (settingsFW.crossPollinate) {
-        opencl->step("crossPollinate", 1);
-    }
+    
+    opencl->readBuffer("maximum", maximumCounts);
 
     if (settingsFW.updateView) {
         opencl->readBuffer("image", pixelsFW);

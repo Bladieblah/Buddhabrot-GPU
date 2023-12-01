@@ -5,16 +5,19 @@
 
 #include <OpenGL/gl.h>
 #include <OpenGL/glu.h>
-#include <GLUT/glut.h>
+#include <GL/freeglut.h>
 
 #include "../imgui/imgui.h"
 #include "../imgui/backends/imgui_impl_glut.h"
 #include "../imgui/backends/imgui_impl_opengl2.h"
 
+#include "../implot/implot.h"
+
 #include "coordinates.hpp"
 #include "fractalWindow.hpp"
 #include "lodepng.hpp"
 #include "opencl.hpp"
+#include "plots.hpp"
 
 using namespace std;
 
@@ -27,9 +30,15 @@ MouseState mouseFW;
 ViewSettings viewFW, defaultView;
 stack<ViewSettings> viewStackFW;
 bool selecting = true;
+bool readParticles = false;
+
+const size_t particleHistBins = 50;
 
 void showParticles() {
-    opencl->readBuffer("particles", particles);
+    if (!readParticles) {
+        opencl->readBuffer("particles", particles);
+        readParticles = true;
+    }
 
     for (int i = 0; i < config->particle_count; i++) {
         Particle particle = particles[i];
@@ -154,12 +163,10 @@ void showInfo() {
 
     ImGui::Checkbox("Draw Box", &selecting);
 
-    int counts[config->threshold_count];
-    opencl->readBuffer("maximum", counts);
     ImGui::SeparatorText("Threshold Counts");
 
     for (int i = 0; i < config->threshold_count; i++) {
-        ImGui::Text("Threshold %d: %d", config->thresholds[i], counts[i]);
+        ImGui::Text("Threshold %d: %d", config->thresholds[i], maximumCounts[i]);
     }
 }
 
@@ -185,6 +192,81 @@ void showControls() {
     }
 }
 
+void plotParticleIterCounts() {
+    if (!readParticles) {
+        opencl->readBuffer("particles", particles);
+        readParticles = true;
+    }
+
+    double bins[particleHistBins + 1];
+    double counts[particleHistBins];
+
+    double delta = log(config->thresholds[config->threshold_count - 1] + 1) / (particleHistBins - 1);
+    for (size_t i = 0; i < particleHistBins; i++) {
+        bins[i+1] = exp(i * delta);
+        counts[i] = 0;
+    }
+
+    for (size_t i = 0; i < config->particle_count; i++) {
+        double c = particles[i].bestIter;
+        if (c == 0) {
+            counts[0]++;
+            continue;
+        }
+
+        size_t j = fmin(log(c) / delta, particleHistBins - 2);
+        counts[j + 1]++;
+    }
+
+    if (ImPlot::BeginPlot("Particle Itercounts")) {
+        ImPlot::SetupAxisScale(ImAxis_X1, ImPlotScale_Log10);
+        ImPlot::SetupAxisScale(ImAxis_Y1, ImPlotScale_Log10);
+        ImPlot::PlotHistogram("", bins, counts, particleHistBins);
+        ImPlot::EndPlot();
+    }
+}
+
+void plotParticleScores() {
+    if (!readParticles) {
+        opencl->readBuffer("particles", particles);
+        readParticles = true;
+    }
+
+    double maxScore = 0;
+    for (size_t i = 0; i < config->particle_count; i++) {
+        if (particles[i].prevScore > maxScore) {
+            maxScore = particles[i].prevScore;
+        }
+    }
+
+    double bins[particleHistBins + 1];
+    double counts[particleHistBins];
+
+    double delta = log(maxScore) / (particleHistBins - 1);
+    for (size_t i = 0; i < particleHistBins; i++) {
+        bins[i+1] = exp(i * delta);
+        counts[i] = 0.001;
+    }
+
+    for (size_t i = 0; i < config->particle_count; i++) {
+        double c = particles[i].prevScore;
+        if (c == 0) {
+            counts[0]++;
+            continue;
+        }
+
+        size_t j = fmin(log(c) / delta, particleHistBins - 2);
+        counts[j + 1]++;
+    }
+
+    if (ImPlot::BeginPlot("Particle Scores")) {
+        ImPlot::SetupAxisScale(ImAxis_X1, ImPlotScale_Log10);
+        ImPlot::SetupAxisScale(ImAxis_Y1, ImPlotScale_Log10);
+        ImPlot::PlotHistogram("", bins, counts, particleHistBins);
+        ImPlot::EndPlot();
+    }
+}
+
 void displayFW() {
     // --------------------------- RESET ---------------------------
     glutSetWindow(windowIdFW);
@@ -194,6 +276,8 @@ void displayFW() {
     glClearColor( 0, 0, 0, 1 );
     glColor3f(1, 1, 1);
     glClear( GL_COLOR_BUFFER_BIT );
+
+    readParticles = false;
 
     // --------------------------- FRACTAL ---------------------------
 
@@ -261,14 +345,20 @@ void displayFW() {
     ImGui_ImplGLUT_NewFrame();
     ImGui::NewFrame();
 
-    ImGui::SetNextWindowSize(ImVec2(220, 0));
-    ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - 200, 0));
+    ImGui::SetNextWindowSize(ImVec2(320, 0));
+    ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - 320, 0));
 
     ImGui::Begin("Info");
     ImGui::PushItemWidth(140);
 
     showInfo();
     showControls();
+
+    if (ImGui::TreeNode("Plots")) {
+        plotParticleIterCounts();
+        plotParticleScores();
+        ImGui::TreePop();
+    }
 
     ImGui::End();
 
@@ -278,13 +368,15 @@ void displayFW() {
     ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
     glFlush();
     glutSwapBuffers();
+
+
 }
 
 void updateView(float scale, float centerX, float centerY, float theta) {
     fprintf(stderr, "\n\n\n\n\n\nSetting region to:\n");
-    fprintf(stderr, "scale = %.3f\n", scale);
-    fprintf(stderr, "center_x = %.3f\ncenter_y = %.3f\n", centerX, centerY);
-    fprintf(stderr, "theta = %.3f\n", theta);
+    fprintf(stderr, "scale = %.5f\n", scale);
+    fprintf(stderr, "center_x = %.5f\ncenter_y = %.5f\n", centerX, centerY);
+    fprintf(stderr, "theta = %.4f\n", theta);
 
     viewStackFW.push(ViewSettings(viewFW));
 
@@ -304,6 +396,9 @@ void updateView(float scale, float centerX, float centerY, float theta) {
 
     opencl->step("resetCount");
     opencl->step("initParticles");
+
+    prevMax = 0;
+    stepCount = 0;
 }
 
 void selectRegion() {
@@ -490,27 +585,30 @@ void mousePressedFW(int button, int state, int x, int y) {
     ImGuiIO& io = ImGui::GetIO();
     ImGui_ImplGLUT_MouseFunc(button, state, x, y);
 
-    if (!io.WantCaptureMouse && button == GLUT_RIGHT_BUTTON) {
-        if (state == GLUT_DOWN) {
+    if (!io.WantCaptureMouse) {
+        if (state == GLUT_DOWN && button == GLUT_RIGHT_BUTTON) {
             translateCamera((ScreenCoordinate){x, y});
+        }
+
+        mouseFW.state = state;
+
+        if (state == GLUT_DOWN) {
+            mouseFW.xDown = x;
+            mouseFW.yDown = y;
         }
 
         return;
     }
-
-    mouseFW.state = state;
-
-    if (state == GLUT_DOWN) {
-        mouseFW.xDown = x;
-        mouseFW.yDown = y;
-    }
 }
 
 void mouseMovedFW(int x, int y) {
+    ImGuiIO& io = ImGui::GetIO();
     ImGui_ImplGLUT_MotionFunc(x, y);
 
-    mouseFW.x = x;
-    mouseFW.y = y;
+    if (!io.WantCaptureMouse) {
+        mouseFW.x = x;
+        mouseFW.y = y;
+    }
 }
 
 void onReshapeFW(int w, int h) {
@@ -543,6 +641,7 @@ void createFractalWindow(char *name, uint32_t width, uint32_t height) {
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    ImPlot::CreateContext();
     ImGuiIO &io = ImGui::GetIO(); (void)io;
     io.IniFilename = NULL;
 
@@ -552,6 +651,7 @@ void createFractalWindow(char *name, uint32_t width, uint32_t height) {
 
     glutKeyboardUpFunc(ImGui_ImplGLUT_KeyboardUpFunc);
     glutSpecialUpFunc(ImGui_ImplGLUT_SpecialUpFunc);
+    glutMouseWheelFunc(ImGui_ImplGLUT_MouseWheelFunc);
     
     glutKeyboardFunc(&keyPressedFW);
     glutSpecialFunc(&specialKeyPressedFW);
