@@ -1,6 +1,8 @@
 #ifndef RENDER_WINDOW_H
 #define RENDER_WINDOW_H
 
+#include <GLFW/glfw3.h>
+
 #include "config.hpp"
 #include "opencl.hpp"
 
@@ -30,7 +32,7 @@ std::string getMandelName();
 
 typedef struct WindowSettings {
     uint32_t width, height;
-    uint32_t windowW, windowH;
+    int windowW, windowH;
     float zoom = 1, centerX = 0, centerY = 0;
     bool grid = false;
     bool showParticles = false;
@@ -42,9 +44,9 @@ typedef struct WindowSettings {
 } WindowSettings;
 
 typedef struct MouseState {
-    int xDown, yDown;
-    int x, y;
-    int state = 1; // GLUT_UP
+    double xDown, yDown;
+    double x, y;
+    int state = GLFW_RELEASE;
 } MouseState;
 
 typedef struct ViewSettings {
@@ -65,6 +67,7 @@ extern uint32_t *pixelsFW;
 extern OpenCl *opencl;
 extern Config *config;
 extern uint32_t *maximumCounts;
+extern GLFWwindow *windowFW;
 
 extern uint32_t prevMax;
 

@@ -48,7 +48,7 @@ struct PixelfCoordinate {
  * been resized and there is no zoom/translating happening.
 */
 struct ScreenCoordinate {
-    int x, y;
+    double x, y;
     PixelCoordinate toPixel(WindowSettings settings);
 };
 

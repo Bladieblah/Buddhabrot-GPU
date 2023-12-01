@@ -5,10 +5,10 @@
 
 #include <OpenGL/gl.h>
 #include <OpenGL/glu.h>
-#include <GL/freeglut.h>
+#include <GLFW/glfw3.h>
 
 #include "../imgui/imgui.h"
-#include "../imgui/backends/imgui_impl_glut.h"
+#include "../imgui/backends/imgui_impl_glfw.h"
 #include "../imgui/backends/imgui_impl_opengl2.h"
 
 #include "../implot/implot.h"
@@ -21,7 +21,7 @@
 
 using namespace std;
 
-int windowIdFW;
+GLFWwindow *windowFW;
 uint32_t *pixelsFW;
 Particle *particles;
 
@@ -269,7 +269,7 @@ void plotParticleScores() {
 
 void displayFW() {
     // --------------------------- RESET ---------------------------
-    glutSetWindow(windowIdFW);
+    glfwMakeContextCurrent(windowFW);
 
     ImGuiIO& io = ImGui::GetIO();
 
@@ -323,7 +323,7 @@ void displayFW() {
         showParticles();
     }
 
-    if (mouseFW.state == GLUT_DOWN && !selecting) {
+    if (mouseFW.state == GLFW_PRESS && !selecting) {
         drawPath();
     }
 
@@ -335,14 +335,14 @@ void displayFW() {
         drawGrid();
     }
 
-    if (mouseFW.state == GLUT_DOWN && selecting) {
+    if (mouseFW.state == GLFW_PRESS && selecting) {
         drawBox();
     }
 
     // --------------------------- IMGUI ---------------------------
 
     ImGui_ImplOpenGL2_NewFrame();
-    ImGui_ImplGLUT_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
     ImGui::SetNextWindowSize(ImVec2(320, 0));
@@ -367,7 +367,7 @@ void displayFW() {
     ImGui::Render();
     ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
     glFlush();
-    glutSwapBuffers();
+    glfwSwapBuffers(windowFW);
 
 
 }
@@ -402,7 +402,7 @@ void updateView(float scale, float centerX, float centerY, float theta) {
 }
 
 void selectRegion() {
-    if (mouseFW.state != GLUT_DOWN) {
+    if (mouseFW.state != GLFW_PRESS) {
         return;
     }
 
@@ -444,16 +444,16 @@ void writePng() {
     }
 }
 
-void keyPressedFW(unsigned char key, int x, int y) {
+void keyPressedFW(GLFWwindow* window, unsigned int key) {
     switch (key) {
         case 'a':
             selectRegion();
             iterCount = 0;
             break;
-        case 'e':
-            glutSetWindow(windowIdFW);
-            glutPostRedisplay();
-            break;
+        // case 'e':
+        //     glutSetWindow(windowFW);
+        //     glutPostRedisplay();
+        //     break;
         
         case 'g':
             settingsFW.grid = ! settingsFW.grid;
@@ -543,30 +543,30 @@ void keyPressedFW(unsigned char key, int x, int y) {
     }
 }
 
-void specialKeyPressedFW(int key, int x, int y) {
+void specialKeyPressedFW(GLFWwindow* window, int key, int scancode, int action, int mod) {
     ImGuiIO& io = ImGui::GetIO();
-    ImGui_ImplGLUT_SpecialFunc(key, x, y);
+    ImGui_ImplGlfw_KeyCallback(window, key, scancode, action, mod);
     if (io.WantCaptureKeyboard) {
         return;
     }
 
     switch (key) {
-        case GLUT_KEY_RIGHT:
+        case GLFW_KEY_RIGHT:
             updateView(viewFW.scaleY, 
                 viewFW.centerX + 0.1 * viewFW.scaleY * cos(viewFW.theta), 
                 viewFW.centerY - 0.1 * viewFW.scaleY * sin(viewFW.theta), viewFW.theta);
             break;
-        case GLUT_KEY_LEFT:
+        case GLFW_KEY_LEFT:
             updateView(viewFW.scaleY, 
                 viewFW.centerX - 0.1 * viewFW.scaleY * cos(viewFW.theta), 
                 viewFW.centerY + 0.1 * viewFW.scaleY * sin(viewFW.theta), viewFW.theta);
             break;
-        case GLUT_KEY_UP:
+        case GLFW_KEY_UP:
             updateView(viewFW.scaleY, 
                 viewFW.centerX + 0.1 * viewFW.scaleY * sin(viewFW.theta), 
                 viewFW.centerY + 0.1 * viewFW.scaleY * cos(viewFW.theta), viewFW.theta);
             break;
-        case GLUT_KEY_DOWN:
+        case GLFW_KEY_DOWN:
             updateView(viewFW.scaleY, 
                 viewFW.centerX - 0.1 * viewFW.scaleY * sin(viewFW.theta), 
                 viewFW.centerY - 0.1 * viewFW.scaleY * cos(viewFW.theta), viewFW.theta);
@@ -581,18 +581,21 @@ void translateCamera(ScreenCoordinate coords) {
     settingsFW.centerY += 2. / settingsFW.zoom * (0.5 - coords.y / (float)settingsFW.windowH);
 }
 
-void mousePressedFW(int button, int state, int x, int y) {
+void mousePressedFW(GLFWwindow* window, int button, int action, int mods) {
     ImGuiIO& io = ImGui::GetIO();
-    ImGui_ImplGLUT_MouseFunc(button, state, x, y);
+    ImGui_ImplGlfw_MouseButtonCallback(window, button, action, mods);
 
     if (!io.WantCaptureMouse) {
-        if (state == GLUT_DOWN && button == GLUT_RIGHT_BUTTON) {
+        double x, y;
+        glfwGetCursorPos(window, &x, &y);
+
+        if (action == GLFW_PRESS && button == GLFW_MOUSE_BUTTON_RIGHT) {
             translateCamera((ScreenCoordinate){x, y});
         }
 
-        mouseFW.state = state;
+        mouseFW.state = action;
 
-        if (state == GLUT_DOWN) {
+        if (action == GLFW_PRESS) {
             mouseFW.xDown = x;
             mouseFW.yDown = y;
         }
@@ -601,9 +604,9 @@ void mousePressedFW(int button, int state, int x, int y) {
     }
 }
 
-void mouseMovedFW(int x, int y) {
+void mouseMovedFW(GLFWwindow* window, double x, double y) {
     ImGuiIO& io = ImGui::GetIO();
-    ImGui_ImplGLUT_MotionFunc(x, y);
+    ImGui_ImplGlfw_CursorPosCallback(window, x, y);
 
     if (!io.WantCaptureMouse) {
         mouseFW.x = x;
@@ -611,8 +614,8 @@ void mouseMovedFW(int x, int y) {
     }
 }
 
-void onReshapeFW(int w, int h) {
-    ImGui_ImplGLUT_ReshapeFunc(w, h);
+void onReshapeFW(GLFWwindow* window, int w, int h) {
+    // ImGui_ImplGlfw(w, h);
 
     settingsFW.windowW = w;
     settingsFW.windowH = h;
@@ -627,16 +630,35 @@ void createFractalWindow(char *name, uint32_t width, uint32_t height) {
     settingsFW.width = width;
     settingsFW.height = height;
 
-    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
-    glutInitWindowSize(width, height);
-    windowIdFW = glutCreateWindow(name);
-
     pixelsFW = (uint32_t *)malloc(3 * width * height * sizeof(uint32_t));
     particles = (Particle *)malloc(config->particle_count * sizeof(Particle));
 
     for (int i = 0; i < 3 * width * height; i++) {
         pixelsFW[i] = 0;
     }
+
+    windowFW = glfwCreateWindow(width, height, name, NULL, NULL);
+    if (windowFW == nullptr) {
+        glfwTerminate();
+        return;
+    }
+
+    glfwMakeContextCurrent(windowFW);
+    glfwSwapInterval(1); // Enable vsync
+
+    // Install imgui callbacks
+    glfwSetWindowFocusCallback(windowFW, ImGui_ImplGlfw_WindowFocusCallback);
+    glfwSetCursorEnterCallback(windowFW, ImGui_ImplGlfw_CursorEnterCallback);
+    glfwSetScrollCallback(windowFW, ImGui_ImplGlfw_ScrollCallback);
+    glfwSetMonitorCallback(ImGui_ImplGlfw_MonitorCallback);
+
+    glfwSetCharCallback(windowFW, keyPressedFW);
+    glfwSetKeyCallback(windowFW, specialKeyPressedFW);
+    glfwSetCursorPosCallback(windowFW, mouseMovedFW);
+    glfwSetMouseButtonCallback(windowFW, mousePressedFW);
+    glfwSetWindowSizeCallback(windowFW, onReshapeFW);
+
+    glfwGetWindowSize(windowFW, &(settingsFW.windowW), &(settingsFW.windowH));
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -646,21 +668,15 @@ void createFractalWindow(char *name, uint32_t width, uint32_t height) {
     io.IniFilename = NULL;
 
     ImGui::StyleColorsDark();
-    ImGui_ImplGLUT_Init();
+    ImGui_ImplGlfw_InitForOpenGL(windowFW, false);
     ImGui_ImplOpenGL2_Init();
-
-    glutKeyboardUpFunc(ImGui_ImplGLUT_KeyboardUpFunc);
-    glutSpecialUpFunc(ImGui_ImplGLUT_SpecialUpFunc);
-    glutMouseWheelFunc(ImGui_ImplGLUT_MouseWheelFunc);
-    
-    glutKeyboardFunc(&keyPressedFW);
-    glutSpecialFunc(&specialKeyPressedFW);
-    glutMouseFunc(&mousePressedFW);
-    glutMotionFunc(&mouseMovedFW);
-    glutPassiveMotionFunc(&mouseMovedFW);
-    glutReshapeFunc(&onReshapeFW);
 }
 
 void destroyFractalWindow() {
+    ImGui_ImplOpenGL2_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+
     free(pixelsFW);
+    glfwDestroyWindow(windowFW);
 }
