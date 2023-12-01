@@ -9,7 +9,7 @@ CC = g++ -std=c++17
 
 WARNFLAGS = -Wall -Wno-deprecated-declarations -Wno-writable-strings
 CFLAGS = -g -O3 $(WARNFLAGS) -MD -Iinclude/ -I./ -Iimgui/ -Iimplot/ -Iimgui/backends/ -I/usr/local/include -I/opt/homebrew/Cellar/glfw/3.3.8/include
-LDFLAGS =-framework opencl -framework OpenGL -L/opt/homebrew/Cellar/gflw/3.3.8/lib -lglfw
+LDFLAGS =-framework opencl -framework OpenGL -L/opt/homebrew/Cellar/glfw/3.3.8/lib -lglfw
 
 # Do some substitution to get a list of .o files from the given .cpp files.
 OBJFILES = $(patsubst $(SRCDIR)%.cpp, $(OBJDIR)%.o, $(SRC))
