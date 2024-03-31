@@ -189,6 +189,7 @@ void showControls() {
         opencl->step("resetCount");
         opencl->step("initParticles");
         iterCount = 0;
+        stepCount = 0;
     }
 }
 
@@ -449,6 +450,7 @@ void keyPressedFW(GLFWwindow* window, unsigned int key) {
         case 'a':
             selectRegion();
             iterCount = 0;
+            stepCount = 0;
             break;
         // case 'e':
         //     glutSetWindow(windowFW);
@@ -487,6 +489,7 @@ void keyPressedFW(GLFWwindow* window, unsigned int key) {
                 opencl->step("resetCount");
                 opencl->step("initParticles");
                 iterCount = 0;
+                stepCount = 0;
             }
             break;
 
@@ -506,6 +509,7 @@ void keyPressedFW(GLFWwindow* window, unsigned int key) {
         case 'R':
             opencl->step("resetCount");
             iterCount = 0;
+            stepCount = 0;
         case 'i':
             opencl->step("initParticles");
             break;

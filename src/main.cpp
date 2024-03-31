@@ -276,10 +276,10 @@ void display() {
     
     displayFW();
 
-    if (maximumCounts[config->threshold_count - 1] - prevMax > config->reset_count) {
-        prevMax = maximumCounts[config->threshold_count - 1];
-        opencl->step("initParticles");
-    }
+    // if (maximumCounts[config->threshold_count - 1] - prevMax > config->reset_count) {
+    //     prevMax = maximumCounts[config->threshold_count - 1];
+    //     opencl->step("initParticles");
+    // }
 
     opencl->step(getMandelName(), config->frame_steps);
     opencl->step("updateDiff");
