@@ -1,4 +1,4 @@
-PROGNAME = a.out
+PROGNAME = buddha.out
 SRCDIR = src/
 OBJDIR = obj/
 INCDIR = include/

@@ -1,6 +1,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include <cmath>
+#include <chrono>
 #include <stack>
 
 #include <OpenGL/gl.h>
@@ -426,8 +427,11 @@ void writePng() {
     uint32_t h = settingsFW.height; 
     uint32_t w = settingsFW.width; 
 
-    sprintf(filename, "images/%s_%d_%d_%.6f_%.6f_%.6f_%.6f.png", 
-        getMandelName().c_str(), settingsFW.width, settingsFW.height,
+    const auto p1 = std::chrono::system_clock::now();
+    const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(p1.time_since_epoch()).count();
+
+    sprintf(filename, "images/%lld_%s_%d_%d_%.6f_%.6f_%.6f_%.6f.png", 
+        seconds, getMandelName().c_str(), settingsFW.width, settingsFW.height,
         viewFW.theta, viewFW.centerX, viewFW.centerY, viewFW.scaleY);
     
     unsigned char *image8Bit = (unsigned char *)malloc(3 * w * h * sizeof(unsigned char));
@@ -452,10 +456,6 @@ void keyPressedFW(GLFWwindow* window, unsigned int key) {
             iterCount = 0;
             stepCount = 0;
             break;
-        // case 'e':
-        //     glutSetWindow(windowFW);
-        //     glutPostRedisplay();
-        //     break;
         
         case 'g':
             settingsFW.grid = ! settingsFW.grid;

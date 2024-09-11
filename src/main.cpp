@@ -130,7 +130,7 @@ string getMandelName() {
     }
 
     char result[100];
-    sprintf(result, "mandelStep_%s_%s", path.c_str(), score.c_str());
+    sprintf(result, "%s_%s", path.c_str(), score.c_str());
 
     return result;
 }
@@ -276,12 +276,10 @@ void display() {
     
     displayFW();
 
-    // if (maximumCounts[config->threshold_count - 1] - prevMax > config->reset_count) {
-    //     prevMax = maximumCounts[config->threshold_count - 1];
-    //     opencl->step("initParticles");
-    // }
+    char kernelName[50];
+    sprintf(kernelName, "mandelStep_%s", getMandelName().c_str());
 
-    opencl->step(getMandelName(), config->frame_steps);
+    opencl->step(kernelName, config->frame_steps);
     opencl->step("updateDiff");
 
     if (settingsFW.showDiff) {
