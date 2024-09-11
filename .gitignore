@@ -1,6 +1,6 @@
 *.out
 .vscode/
 *.log
-*.png
+images/*.png
 *.o
 *.d

@@ -25,4 +25,9 @@ make
 - Exit the program with `q`
 - For a full list of controls check out the source code in [fractalWindow.cpp](/src/fractalWindow.cpp)
 
+## Gallery
+
 ![Demo 1](public/buddha2.png)
+![Demo 1](public/buddha3.png)
+![Demo 1](public/buddha4.png)
+![Demo 1](public/buddha5.png)
