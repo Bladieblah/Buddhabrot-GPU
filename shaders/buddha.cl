@@ -353,9 +353,7 @@ inline int getScore(
 }
 
 inline float getRange(uint iterCount) {
-    return clamp(17 * pow(1 + iterCount, -2.), 1e-7, 0.1);
-    // def rad(x, a=17.12129682, b=-1.5):
-    // return np.clip(a * np.clip(x, 1, None)**b, 1e-6, 0.1)
+    return clamp(17 * pow(1 + iterCount, -1.), 1e-5, 0.1);
 }
 
 inline void mutateParticle(
@@ -375,7 +373,7 @@ inline void mutateParticle(
     }
 
     float2 newOffset;
-    if (uniformRand(randomState, randomIncrement, x) < 0.95) {
+    if (uniformRand(randomState, randomIncrement, x) < 0.98) {
         float range = getRange(particle->iterCount);
         // float range = 0.1;
 
@@ -384,18 +382,18 @@ inline void mutateParticle(
             particle->prevOffset.y + range * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f)
         );
     } else {
-        const unsigned int nParticles = get_global_size(0);
-        const int y = randint(randomState, randomIncrement, x, nParticles);
-        float threshold = (particles[y].prevScore / (particle->prevScore + 1) - 5) * 0.2;
-        if (uniformRand(randomState, randomIncrement, x) < threshold) {
-            float range = getRange(particles[y].iterCount);
-            newOffset = (float2)(
-                particles[y].prevOffset.x + range * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f),
-                particles[y].prevOffset.y + range * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f)
-            );
-        } else {
+        // const unsigned int nParticles = get_global_size(0);
+        // const int y = randint(randomState, randomIncrement, x, nParticles);
+        // float threshold = (particles[y].prevScore / (particle->prevScore + 1) - 5) * 0.2;
+        // if (uniformRand(randomState, randomIncrement, x) < threshold) {
+        //     float range = getRange(particles[y].iterCount);
+        //     newOffset = (float2)(
+        //         particles[y].prevOffset.x + range * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f),
+        //         particles[y].prevOffset.y + range * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f)
+        //     );
+        // } else {
             newOffset = getNewPos(randomState, randomIncrement, x);
-        }
+        // }
     }
 
     particle->pos = newOffset;
@@ -415,6 +413,8 @@ __kernel void initParticles(
     unsigned int thresholdCount
 ) {
     const int x = get_global_id(0);
+    
+    Particle foo = {{0,0}, {0,0}, {0,0}, 1, 1, 2, 2};
 
     Particle tmp = particles[x];
     resetParticle(&tmp, path, x * threshold[thresholdCount - 1], randomState, randomIncrement, x);
@@ -562,11 +562,10 @@ __constant float COLOR_SCHEME[3][3] = {
 };
 
 // Green-blue colorscheme
-// __constant float COLOR_SCHEME[4][3] = {
-//     {0.2, 0.3, 0.4,},
-//     {0.0, 0.4, 0.3,},
-//     {0.3, 0.4, 0.0,},
-//     {0.1, 0.0, 0.2,},
+// __constant float COLOR_SCHEME[3][3] = {
+//     {0.0, 0.1, 0.1,},
+//     {0.0, 0.2, 0.05,},
+//     {0.7, 0.7, 0.0,},
 // };
 
 // Many layers!
@@ -602,9 +601,8 @@ __constant float IMAGE_MAX = 4294967295.0;
         image[imageOffset + j] = 0;
 
         for (uint i = 0; i < thresholdCount; i++) {
-        // uint i = 1;
             // float countFraction = (float)max(maximum[i] / CLAMPS[i], count[i * pixelCount + pixelOffset]) / (float)maximum[i];
-            float countFraction = (float)count[i * pixelCount + pixelOffset] / (float)maximum[i];
+            float countFraction = (float)count[i * pixelCount + pixelOffset] / (float)(maximum[i] + 1);
             image[imageOffset + j] += (int)(COLOR_SCHEME[i][j] * sqrt(countFraction) * IMAGE_MAX);
         }
 

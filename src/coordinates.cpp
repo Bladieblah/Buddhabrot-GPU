@@ -67,8 +67,8 @@ FractalCoordinate operator*(FractalCoordinate f, float x) {
 
 ScreenCoordinate PixelCoordinate::toScreen(WindowSettings settings) {
     return (ScreenCoordinate) {
-        (int)((x / (float)settings.width  - settings.centerX) * settings.zoom * settings.windowW),
-        (int)((y / (float)settings.height - settings.centerY) * settings.zoom * settings.windowH)
+        (double)((x / (float)settings.width  - settings.centerX) * settings.zoom * settings.windowW),
+        (double)((y / (float)settings.height - settings.centerY) * settings.zoom * settings.windowH)
     };
 }
 

@@ -4,7 +4,7 @@
 #include <cstdlib>
 #include <math.h>
 
-#include <GLUT/glut.h>
+#include <GLFW/glfw3.h>
 
 #include "config.hpp"
 #include "fractalWindow.hpp"
@@ -130,7 +130,7 @@ string getMandelName() {
     }
 
     char result[100];
-    sprintf(result, "mandelStep_%s_%s", path.c_str(), score.c_str());
+    sprintf(result, "%s_%s", path.c_str(), score.c_str());
 
     return result;
 }
@@ -276,12 +276,10 @@ void display() {
     
     displayFW();
 
-    if (maximumCounts[config->threshold_count - 1] - prevMax > config->reset_count) {
-        prevMax = maximumCounts[config->threshold_count - 1];
-        opencl->step("initParticles");
-    }
+    char kernelName[50];
+    sprintf(kernelName, "mandelStep_%s", getMandelName().c_str());
 
-    opencl->step(getMandelName(), config->frame_steps);
+    opencl->step(kernelName, config->frame_steps);
     opencl->step("updateDiff");
 
     if (settingsFW.showDiff) {
@@ -320,7 +318,12 @@ void cleanAll() {
     opencl->cleanup();
 }
 
-int main(int argc, char **argv) {
+static void glfwHandleErrors(int error, const char* description)
+{
+    fprintf(stderr, "GLFW Error %d: %s\n", error, description);
+}
+
+int main() {
     config = new Config("config.cfg");
     config->printValues();
 
@@ -335,17 +338,20 @@ int main(int argc, char **argv) {
     timePoint = chrono::high_resolution_clock::now();
 
     prepare();
-
     atexit(&cleanAll);
 
-    glutInit(&argc, argv);
+    glfwSetErrorCallback(glfwHandleErrors);
+
+    if (!glfwInit()) return 1;
+
     createFractalWindow("Fractal Window", config->width, config->height);
-    glutDisplayFunc(&display);
 
-    glutIdleFunc(&display);
+    while (!glfwWindowShouldClose(windowFW)) {
+        glfwPollEvents();
+        display();
+    }
 
-    fprintf(stderr, "\nStarting main loop\n\n");
-    glutMainLoop();
+    glfwTerminate();
 
     return 0;
 }

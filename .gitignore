@@ -1,5 +1,6 @@
 *.out
-obj/
 .vscode/
 *.log
-*.png
+images/*.png
+*.o
+*.d
