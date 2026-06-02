@@ -188,9 +188,9 @@ inline int2 screenToPixel(float2 screenCoord, ViewSettings view) {
     };
 }
 
- inline int2 fractalToPixel(float2 fractalCoord, ViewSettings view) {
-    return screenToPixel(fractalToScreen(fractalCoord, view), view);
- }
+inline int2 fractalToPixel(float2 fractalCoord, ViewSettings view) {
+return screenToPixel(fractalToScreen(fractalCoord, view), view);
+}
 
 /**
  * Fractal stuff
@@ -371,11 +371,14 @@ inline void mutateParticle(
         particle->prevOffset = particle->offset;
         particle->bestIter = particle->iterCount;
     }
+    else {
+        particle->prevScore *= 0.90;
+    }
 
     float2 newOffset;
     if (uniformRand(randomState, randomIncrement, x) < 0.98) {
         float range = getRange(particle->iterCount);
-        // float range = 0.1;
+        // float range = 0.01;
 
         newOffset = (float2)(
             particle->prevOffset.x + range * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f),
@@ -392,8 +395,10 @@ inline void mutateParticle(
         //         particles[y].prevOffset.y + range * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f)
         //     );
         // } else {
-            newOffset = getNewPos(randomState, randomIncrement, x);
+        //     newOffset = getNewPos(randomState, randomIncrement, x);
         // }
+
+        // resetParticle(&particle, path, pathStart, randomState, randomIncrement, x);
     }
 
     particle->pos = newOffset;
@@ -556,9 +561,9 @@ __kernel void findMax2(global unsigned int *maxima, global unsigned int *maximum
  */
 
 __constant float COLOR_SCHEME[3][3] = {
-    {0.2, 0.0, 0.4,},
-    {0.0, 0.4, 0.6,},
-    {0.8, 0.6, 0.0,},
+    {0.5, 0.1, 0.5,},
+    {0.1, 0.9, 0.0,},
+    {0.0, 0.0, 0.6,},
 };
 
 // Green-blue colorscheme
@@ -570,10 +575,10 @@ __constant float COLOR_SCHEME[3][3] = {
 
 // Many layers!
 // __constant float COLOR_SCHEME[5][3] = {
-//     {0.3, 0.0, 0.3,},
-//     {0.3, 0.3, 0.0,},
-//     {0.0, 0.3, 0.0,},
-//     {0.3, 0.3, 0.0,},
+//     {0.3, 0.0, 0.7,},
+//     {0.4, 0.3, 0.0,},
+//     {0.0, 0.5, 0.0,},
+//     {0.3, 0.2, 0.0,},
 //     {0.0, 0.0, 0.3,},
 // };
 

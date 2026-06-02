@@ -630,18 +630,34 @@ void onReshapeFW(GLFWwindow* window, int w, int h) {
     glMatrixMode(GL_MODELVIEW);
 }
 
+#define MAX_WINDOW_WIDTH 1512
+#define MAX_WINDOW_HEIGHT 916
+
 void createFractalWindow(char *name, uint32_t width, uint32_t height) {
     settingsFW.width = width;
     settingsFW.height = height;
+    
+    settingsFW.windowW = width;
+    settingsFW.windowH = height;
 
-    pixelsFW = (uint32_t *)malloc(3 * width * height * sizeof(uint32_t));
+    if (settingsFW.windowH > MAX_WINDOW_HEIGHT) {
+        settingsFW.windowW = (uint32_t)(settingsFW.windowW / (double)settingsFW.windowH * MAX_WINDOW_HEIGHT);
+        settingsFW.windowH = MAX_WINDOW_HEIGHT;
+    }
+
+    if (settingsFW.windowW > MAX_WINDOW_WIDTH) {
+        settingsFW.windowH = (uint32_t)(settingsFW.windowH / (double)settingsFW.windowW * MAX_WINDOW_WIDTH);
+        settingsFW.windowW = MAX_WINDOW_WIDTH;
+    }
+
+    pixelsFW = (uint32_t *)malloc(3 * settingsFW.width * settingsFW.height * sizeof(uint32_t));
     particles = (Particle *)malloc(config->particle_count * sizeof(Particle));
 
-    for (int i = 0; i < 3 * width * height; i++) {
+    for (int i = 0; i < 3 * settingsFW.width * settingsFW.height; i++) {
         pixelsFW[i] = 0;
     }
 
-    windowFW = glfwCreateWindow(width, height, name, NULL, NULL);
+    windowFW = glfwCreateWindow(settingsFW.windowW, settingsFW.windowH, name, NULL, NULL);
     if (windowFW == nullptr) {
         glfwTerminate();
         return;
