@@ -24,6 +24,9 @@ public:
     unsigned int maximum_size = 32;
     unsigned int frame_steps = 100;
 
+    unsigned int seed_resolution = 4096;
+    unsigned int max_seeds = 100000;
+
     float scale = 1.3;
     float center_x = -0.5;
     float center_y = 0.;
@@ -53,6 +56,9 @@ private:
         {"threshold4", {'i', (void *)&(thresholds[4])}},
         
         {"reset_count", {'i', (void *)&(reset_count)}},
+        
+        {"seed_resolution", {'i', (void *)&(seed_resolution)}},
+        {"max_seeds", {'i', (void *)&(max_seeds)}},
 
         {"width", {'i', (void *)&width}},
         {"height", {'i', (void *)&height}},

@@ -51,13 +51,18 @@ void createBufferSpecs() {
         {"path",      {NULL, config->particle_count * config->thresholds[config->threshold_count - 1] * sizeof(FractalCoord)}},
         {"threshold", {NULL, config->threshold_count * sizeof(uint32_t)}},
 
-        {"maxima", {NULL, config->threshold_count * maximaKernelSize * sizeof(uint32_t)}},
+        {"maxima",  {NULL, config->threshold_count * maximaKernelSize * sizeof(uint32_t)}},
         {"maximum", {NULL, config->threshold_count * sizeof(uint32_t)}},
 
         {"randomState",     {NULL, config->particle_count * sizeof(uint64_t)}},
         {"randomIncrement", {NULL, config->particle_count * sizeof(uint64_t)}},
         {"initState",       {NULL, config->particle_count * sizeof(uint64_t)}},
         {"initSeq",         {NULL, config->particle_count * sizeof(uint64_t)}},
+
+        // minDist seeding
+        {"seedCoordinates", {NULL, config->seed_resolution * config->seed_resolution * sizeof(FractalCoord)}},
+        {"seedDistances",   {NULL, config->seed_resolution * config->seed_resolution * sizeof(FractalCoord)}},
+        {"seeds",           {NULL, config->max_seeds * sizeof(FractalCoord)}},
     };
 }
 
@@ -147,6 +152,7 @@ void createKernelSpecs() {
         {"renderImage",    {NULL, 2, {config->width, config->height}, {0, 0}, "renderImage"}},
         {"renderImageD",   {NULL, 2, {config->width, config->height}, {0, 0}, "renderImage"}},
         {"updateDiff",     {NULL, 2, {config->width, config->height}, {0, 0}, "updateDiff"}},
+        {"getDistanceMap", {NULL, 2, {config->seed_resolution, config->seed_resolution}, {0, 0}, "getDistanceMap"}},
     };
 
     for (string name : getMandelNames()) {
@@ -208,6 +214,11 @@ void setKernelArgs() {
     opencl->setKernelBufferArg("updateDiff", 2, "countDiff");
     opencl->setKernelArg("updateDiff", 3, sizeof(float), (void*)&(config->alpha));
     opencl->setKernelArg("updateDiff", 4, sizeof(unsigned int), (void*)&(config->threshold_count));
+
+    cl_float2 initialTarget = {-0.5, 0};
+    opencl->setKernelBufferArg("getDistanceMap", 0, "seedCoordinates");
+    opencl->setKernelBufferArg("getDistanceMap", 1, "seedDistances");
+    opencl->setKernelArg("getDistanceMap", 2, sizeof(cl_float2), (void*)&(initialTarget));
 }
 
 void initPcg() {

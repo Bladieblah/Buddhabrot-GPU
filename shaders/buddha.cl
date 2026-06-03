@@ -129,25 +129,25 @@ inline float gaussianRand(
  * Complex math stuff
  */
 
- inline float2 cmul(float2 a, float2 b) {
+inline float2 cmul(float2 a, float2 b) {
     return (float2)( a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x);
- }
+}
 
- inline float2 csquare(float2 z) {
+inline float2 csquare(float2 z) {
     return (float2)( z.x * z.x - z.y * z.y, 2 * z.y * z.x);
- }
+}
 
- inline float cnorm2(float2 z) {
+inline float cnorm2(float2 z) {
     return z.x * z.x + z.y * z.y;
- }
+}
 
- inline float cnorm(float2 z) {
+inline float cnorm(float2 z) {
     return sqrt(cnorm2(z));
- }
+}
 
- inline float cdot(float2 a, float2 b) {
+inline float cdot(float2 a, float2 b) {
     return a.x * b.x + a.y * b.y;
- }
+}
 
 /**
  * Coordinate transformations
@@ -638,4 +638,42 @@ __kernel void updateDiff(
         countDiff[ind] = countDiff[ind] * alpha + count[ind] - prevCount[ind];
         prevCount[ind] = count[ind];
     }
+}
+
+/************************************************************************************************
+ *                               Mandelbrot code for seeding                                    *
+ ************************************************************************************************/
+
+__kernel void getDistanceMap(
+    global float *distanceMap,
+    global float2 *positions,
+    float2 target
+) {
+    const int x = get_global_id(0);
+    const int y = get_global_id(1);
+
+    const int W = get_global_size(0);
+    const int H = get_global_size(1);
+
+    float2 c = (float2)(-1.5 + 3 / ((float)x / (float)(W - 1)), -1.5 + 3 / ((float)y / (float)(H - 1)));
+    float2 z = c;
+    bool escaped = false;
+
+    float minDist  = 99999999;
+
+    if (isValid(z)) {
+        for (int i = 0; i < 200; i++) {
+            z = csquare(z) + c;
+            escaped = fabs(z.x) > 2 || fabs(z.y) > 2 || cnorm2(z) > 4;
+
+            if (escaped) {
+                break;
+            }
+
+            minDist = fmin(minDist, cnorm2(z - target));
+        }
+    }
+
+    distanceMap[W * y + x] = sqrt(minDist);
+    positions[W * y + x] = c;
 }
