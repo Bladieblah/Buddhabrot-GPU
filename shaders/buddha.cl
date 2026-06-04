@@ -316,10 +316,13 @@ inline void resetParticle(
     int x
 ) {
     float2 newOffset;
+    float delta = 0.000732600732601; // 3 / 4095
     if (seedCount > 0) {
-        newOffset = getNewPos(randomState, randomIncrement, x);
-    } else {
         newOffset = seeds[randint(randomState, randomIncrement, x, seedCount)];
+        newOffset.x += delta * (uniformRand(randomState, randomIncrement, x) - 0.5);
+        newOffset.y += delta * (uniformRand(randomState, randomIncrement, x) - 0.5);
+    } else {
+        newOffset = getNewPos(randomState, randomIncrement, x);
     }
 
     particle->iterCount = 1;
@@ -654,7 +657,11 @@ __kernel void getDistanceMap(
     const int W = get_global_size(0);
     const int H = get_global_size(1);
 
-    float2 c = (float2)(-1.5 + 3 / ((float)x / (float)(W - 1)), -1.5 + 3 / ((float)y / (float)(H - 1)));
+    float2 c = (float2)(
+        -1.5 + 3 * ((float)x / (float)(W - 1)),
+        -1.5 + 3 * ((float)y / (float)(H - 1))
+    );
+
     float2 z = c;
     bool escaped = false;
 

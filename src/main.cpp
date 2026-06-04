@@ -60,9 +60,9 @@ void createBufferSpecs() {
         {"initSeq",         {NULL, config->particle_count * sizeof(uint64_t)}},
 
         // minDist seeding
-        {"seedCoordinates", {NULL, config->seed_resolution * config->seed_resolution * sizeof(FractalCoord)}},
         {"seedDistances",   {NULL, config->seed_resolution * config->seed_resolution * sizeof(float)}},
-        {"seeds",           {NULL, config->max_seeds * sizeof(FractalCoord)}},
+        {"seedCoordinates", {NULL, config->seed_resolution * config->seed_resolution * sizeof(cl_float2)}},
+        {"seeds",           {NULL, config->max_seeds * sizeof(cl_float2)}},
     };
 }
 
@@ -166,23 +166,28 @@ void setKernelArgs() {
     opencl->setKernelBufferArg("seedNoise", 2, "initState");
     opencl->setKernelBufferArg("seedNoise", 3, "initSeq");
 
+    unsigned int zero = 0;
     for (string name : getMandelNames()) {
         opencl->setKernelBufferArg(name, 0, "particles");
         opencl->setKernelBufferArg(name, 1, "count");
         opencl->setKernelBufferArg(name, 2, "threshold");
         opencl->setKernelBufferArg(name, 3, "path");
-        opencl->setKernelBufferArg(name, 4, "randomState");
-        opencl->setKernelBufferArg(name, 5, "randomIncrement");
-        opencl->setKernelArg(name, 6, sizeof(unsigned int), (void*)&(config->threshold_count));
-        opencl->setKernelArg(name, 7, sizeof(ViewSettings), (void*)&viewFW);
+        opencl->setKernelBufferArg(name, 4, "seeds");
+        opencl->setKernelBufferArg(name, 5, "randomState");
+        opencl->setKernelBufferArg(name, 6, "randomIncrement");
+        opencl->setKernelArg(name, 7, sizeof(unsigned int), (void*)&(config->threshold_count));
+        opencl->setKernelArg(name, 8, sizeof(unsigned int), (void*)&zero);
+        opencl->setKernelArg(name, 9, sizeof(ViewSettings), (void*)&viewFW);
     }
     
     opencl->setKernelBufferArg("initParticles", 0, "particles");
     opencl->setKernelBufferArg("initParticles", 1, "threshold");
     opencl->setKernelBufferArg("initParticles", 2, "path");
-    opencl->setKernelBufferArg("initParticles", 3, "randomState");
-    opencl->setKernelBufferArg("initParticles", 4, "randomIncrement");
-    opencl->setKernelArg("initParticles", 5, sizeof(unsigned int), (void*)&(config->threshold_count));
+    opencl->setKernelBufferArg("initParticles", 3, "seeds");
+    opencl->setKernelBufferArg("initParticles", 4, "randomState");
+    opencl->setKernelBufferArg("initParticles", 5, "randomIncrement");
+    opencl->setKernelArg("initParticles", 6, sizeof(unsigned int), (void*)&(config->threshold_count));
+    opencl->setKernelArg("initParticles", 7, sizeof(unsigned int), (void*)&zero);
     
     opencl->setKernelBufferArg("resetCount", 0, "count");
     opencl->setKernelArg("resetCount", 1, sizeof(unsigned int), (void*)&(config->maximum_size));
@@ -215,9 +220,9 @@ void setKernelArgs() {
     opencl->setKernelArg("updateDiff", 3, sizeof(float), (void*)&(config->alpha));
     opencl->setKernelArg("updateDiff", 4, sizeof(unsigned int), (void*)&(config->threshold_count));
 
-    cl_float2 initialTarget = {-0.5, 0};
-    opencl->setKernelBufferArg("getDistanceMap", 0, "seedCoordinates");
-    opencl->setKernelBufferArg("getDistanceMap", 1, "seedDistances");
+    cl_float2 initialTarget = {config->center_x, config->center_y};
+    opencl->setKernelBufferArg("getDistanceMap", 0, "seedDistances");
+    opencl->setKernelBufferArg("getDistanceMap", 1, "seedCoordinates");
     opencl->setKernelArg("getDistanceMap", 2, sizeof(cl_float2), (void*)&(initialTarget));
 }
 

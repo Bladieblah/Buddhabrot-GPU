@@ -39,6 +39,7 @@ cl_float2 *seeds;
 cl_float2 *seedCoordinates;
 float *seedDistances;
 size_t *seedIndex;
+unsigned int seedCount;
 
 void showParticles() {
     if (!readParticles) {
@@ -65,6 +66,17 @@ void showParticles() {
             2 * coord.y / (float)viewFW.sizeY - 1
         );
 
+    }
+}
+
+void showSeeds() {
+    glColor3f(0.8,0.8,0);
+    for (int i = 0; i < seedCount; i++) {
+        PixelfCoordinate coord = ((FractalCoordinate){seeds[i].s[0], seeds[i].s[1]}).toPixelf(defaultView);
+        glVertex2f(
+            2 * coord.x / (float)viewFW.sizeX - 1,
+            2 * coord.y / (float)viewFW.sizeY - 1
+        );
     }
 }
 
@@ -328,6 +340,7 @@ void displayFW() {
 
     if (settingsFW.showParticles) {
         showParticles();
+        showSeeds();
     }
 
     if (mouseFW.state == GLFW_PRESS && !selecting) {
@@ -379,12 +392,12 @@ void displayFW() {
 
 }
 
-size_t bisect_distances(float target) {
-    size_t left = 0;
-    size_t right = config->seed_resolution * config->seed_resolution - 1;
-    size_t mid = (left + right) / 2;
+unsigned int bisect_distances(float target) {
+    unsigned int left = 0;
+    unsigned int right = config->seed_resolution * config->seed_resolution - 1;
+    unsigned int mid = (left + right) / 2;
 
-    while (seedDistances[seedIndex[right]] >= target) {
+    while (seedDistances[seedIndex[right]] >= target and right - left > 1) {
         if (seedDistances[seedIndex[mid]] < target) {
             left = mid;
         } else {
@@ -397,10 +410,16 @@ size_t bisect_distances(float target) {
     return right;
 }
 
+void setSeedCount(unsigned int seedCount) {
+    for (string name : getMandelNames()) {
+        opencl->setKernelArg(name, 8, sizeof(unsigned int), (void*)&seedCount);
+    }
+    opencl->setKernelArg("initParticles", 7, sizeof(unsigned int), (void*)&seedCount);
+}
+
 void updateSeeds() {
     cl_float2 target = {viewFW.centerX, viewFW.centerY};
     float radius = sqrt(viewFW.scaleX * viewFW.scaleX + viewFW.scaleY * viewFW.scaleY) / 2;
-
 
     opencl->setKernelArg("getDistanceMap", 2, sizeof(cl_float2), (void*)&(target));
     opencl->step("getDistanceMap");
@@ -415,12 +434,19 @@ void updateSeeds() {
         }
     );
 
-    size_t cutoff = bisect_distances(radius);
+    unsigned int cutoff = bisect_distances(radius);
+    fprintf(stderr, "Found %d seeds\n", cutoff);
     if (cutoff >= config->max_seeds) {
-        // todo
+        setSeedCount(0);
+        return;
     }
 
-    
+    for (int i=0; i < cutoff; i++) {
+        seeds[i] = seedCoordinates[seedIndex[i]];
+    }
+
+    opencl->writeBuffer("seeds", seeds);
+    setSeedCount(cutoff);
 }
 
 void updateView(float scale, float centerX, float centerY, float theta) {
@@ -445,7 +471,7 @@ void updateView(float scale, float centerX, float centerY, float theta) {
     viewFW.sinTheta = sin(theta);
 
     for (string name : getMandelNames()) {
-        opencl->setKernelArg(name, 7, sizeof(ViewSettings), (void*)&viewFW);
+        opencl->setKernelArg(name, 9, sizeof(ViewSettings), (void*)&viewFW);
     }
 
     updateSeeds();
@@ -725,6 +751,9 @@ void createFractalWindow(char *name, uint32_t width, uint32_t height) {
         glfwTerminate();
         return;
     }
+
+    updateSeeds();
+    opencl->step("initParticles");
 
     glfwMakeContextCurrent(windowFW);
     glfwSwapInterval(1); // Enable vsync
