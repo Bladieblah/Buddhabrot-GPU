@@ -305,6 +305,8 @@ inline float2 getNewPos(
     return newOffset;
 }
 
+__constant float DELTA_SEED = 0.000732600732601; // 3 / 4095
+
 inline void resetParticle(
     Particle *particle,
     global float2 *path,
@@ -316,11 +318,11 @@ inline void resetParticle(
     int x
 ) {
     float2 newOffset;
-    float delta = 0.000732600732601; // 3 / 4095
+    
     if (seedCount > 0) {
         newOffset = seeds[randint(randomState, randomIncrement, x, seedCount)];
-        newOffset.x += delta * (uniformRand(randomState, randomIncrement, x) - 0.5);
-        newOffset.y += delta * (uniformRand(randomState, randomIncrement, x) - 0.5);
+        newOffset.x += DELTA_SEED * (uniformRand(randomState, randomIncrement, x) - 0.5);
+        newOffset.y += DELTA_SEED * (uniformRand(randomState, randomIncrement, x) - 0.5);
     } else {
         newOffset = getNewPos(randomState, randomIncrement, x);
     }
@@ -387,9 +389,8 @@ inline void mutateParticle(
         particle->prevScore *= 0.90;
     }
 
-    if (uniformRand(randomState, randomIncrement, x) < 0.98) {
+    if (uniformRand(randomState, randomIncrement, x) < 1.98) {
         float range = getRange(particle->iterCount);
-        // float range = 0.01;
 
         float2 newOffset = (float2)(
             particle->prevOffset.x + range * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f),

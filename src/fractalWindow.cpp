@@ -49,7 +49,7 @@ void showParticles() {
 
     for (int i = 0; i < config->particle_count; i++) {
         Particle particle = particles[i];
-        PixelfCoordinate coord = ((FractalCoordinate){particle.prevOffset.s[0], particle.prevOffset.s[1]}).toPixelf(defaultView);
+        PixelfCoordinate coord = ((FractalCoordinate){particle.offset.s[0], particle.offset.s[1]}).toPixelf(defaultView);
 
         if (particle.prevScore == -1) {
             glColor3f(1,0,0);
@@ -73,6 +73,7 @@ void showSeeds() {
     glColor3f(0.8,0.8,0);
     for (int i = 0; i < seedCount; i++) {
         PixelfCoordinate coord = ((FractalCoordinate){seeds[i].s[0], seeds[i].s[1]}).toPixelf(defaultView);
+        // fprintf(stderr, "Seed at (%.3f, %.3f)\n", seeds[i].s[0], seeds[i].s[1]);
         glVertex2f(
             2 * coord.x / (float)viewFW.sizeX - 1,
             2 * coord.y / (float)viewFW.sizeY - 1
@@ -340,6 +341,9 @@ void displayFW() {
 
     if (settingsFW.showParticles) {
         showParticles();
+    }
+
+    if (settingsFW.showSeeds) {
         showSeeds();
     }
 
@@ -434,19 +438,20 @@ void updateSeeds() {
         }
     );
 
-    unsigned int cutoff = bisect_distances(radius);
-    fprintf(stderr, "Found %d seeds\n", cutoff);
-    if (cutoff >= config->max_seeds) {
+    seedCount = bisect_distances(radius);
+    fprintf(stderr, "Found %d seeds\n", seedCount);
+    if (seedCount >= config->max_seeds) {
+        fprintf(stderr, "Not using seeds\n");
         setSeedCount(0);
         return;
     }
 
-    for (int i=0; i < cutoff; i++) {
+    for (int i=0; i < seedCount; i++) {
         seeds[i] = seedCoordinates[seedIndex[i]];
     }
 
     opencl->writeBuffer("seeds", seeds);
-    setSeedCount(cutoff);
+    setSeedCount(seedCount);
 }
 
 void updateView(float scale, float centerX, float centerY, float theta) {
@@ -581,6 +586,9 @@ void keyPressedFW(GLFWwindow* window, unsigned int key) {
             break;
         case 'p':
             settingsFW.showParticles = !settingsFW.showParticles;
+            break;
+        case 'l':
+            settingsFW.showSeeds = !settingsFW.showSeeds;
             break;
 
         case 'q':
