@@ -35,6 +35,11 @@ bool readParticles = false;
 
 const size_t particleHistBins = 50;
 
+cl_float2 *seeds;
+cl_float2 *seedCoordinates;
+float *seedDistances;
+size_t *seedIndex;
+
 void showParticles() {
     if (!readParticles) {
         opencl->readBuffer("particles", particles);
@@ -374,11 +379,58 @@ void displayFW() {
 
 }
 
+size_t bisect_distances(float target) {
+    size_t left = 0;
+    size_t right = config->seed_resolution * config->seed_resolution - 1;
+    size_t mid = (left + right) / 2;
+
+    while (seedDistances[seedIndex[right]] >= target) {
+        if (seedDistances[seedIndex[mid]] < target) {
+            left = mid;
+        } else {
+            right = mid;
+        }
+
+        mid = (left + right) / 2;
+    }
+
+    return right;
+}
+
+void updateSeeds() {
+    cl_float2 target = {viewFW.centerX, viewFW.centerY};
+    float radius = sqrt(viewFW.scaleX * viewFW.scaleX + viewFW.scaleY * viewFW.scaleY) / 2;
+
+
+    opencl->setKernelArg("getDistanceMap", 2, sizeof(cl_float2), (void*)&(target));
+    opencl->step("getDistanceMap");
+    opencl->readBuffer("seedCoordinates", seedCoordinates);
+    opencl->readBuffer("seedDistances", seedDistances);
+
+    sort(
+        seedIndex,
+        seedIndex + config->seed_resolution * config->seed_resolution,
+        [](const auto &lhs, const auto &rhs) {
+            return seedDistances[lhs] < seedDistances[rhs];
+        }
+    );
+
+    size_t cutoff = bisect_distances(radius);
+    if (cutoff >= config->max_seeds) {
+        // todo
+    }
+
+    
+}
+
 void updateView(float scale, float centerX, float centerY, float theta) {
-    fprintf(stderr, "\n\n\n\n\n\nSetting region to:\n");
+    if (config->verbose) {
+        fprintf(stderr, "\n\n\n\n\n\n");
+    }
+    fprintf(stderr, "Setting region to:\n");
     fprintf(stderr, "scale = %.5f\n", scale);
     fprintf(stderr, "center_x = %.5f\ncenter_y = %.5f\n", centerX, centerY);
-    fprintf(stderr, "theta = %.4f\n", theta);
+    fprintf(stderr, "theta = %.4f\n\n", theta);
 
     viewStackFW.push(ViewSettings(viewFW));
 
@@ -395,6 +447,8 @@ void updateView(float scale, float centerX, float centerY, float theta) {
     for (string name : getMandelNames()) {
         opencl->setKernelArg(name, 7, sizeof(ViewSettings), (void*)&viewFW);
     }
+
+    updateSeeds();
 
     opencl->step("resetCount");
     opencl->step("initParticles");
@@ -652,6 +706,15 @@ void createFractalWindow(char *name, uint32_t width, uint32_t height) {
 
     pixelsFW = (uint32_t *)malloc(3 * settingsFW.width * settingsFW.height * sizeof(uint32_t));
     particles = (Particle *)malloc(config->particle_count * sizeof(Particle));
+    
+    seeds = (cl_float2 *)malloc(config->max_seeds * sizeof(cl_float2));
+    seedCoordinates = (cl_float2 *)malloc(config->seed_resolution * config->seed_resolution * sizeof(cl_float2));
+    seedDistances = (float *)malloc(config->seed_resolution * config->seed_resolution * sizeof(float));
+    seedIndex = (size_t *)malloc(config->seed_resolution * config->seed_resolution * sizeof(size_t));
+
+    for (int i=0; i < config->seed_resolution * config->seed_resolution; i++) {
+        seedIndex[i] = i;
+    }
 
     for (int i = 0; i < 3 * settingsFW.width * settingsFW.height; i++) {
         pixelsFW[i] = 0;

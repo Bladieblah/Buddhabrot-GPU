@@ -61,7 +61,7 @@ void createBufferSpecs() {
 
         // minDist seeding
         {"seedCoordinates", {NULL, config->seed_resolution * config->seed_resolution * sizeof(FractalCoord)}},
-        {"seedDistances",   {NULL, config->seed_resolution * config->seed_resolution * sizeof(FractalCoord)}},
+        {"seedDistances",   {NULL, config->seed_resolution * config->seed_resolution * sizeof(float)}},
         {"seeds",           {NULL, config->max_seeds * sizeof(FractalCoord)}},
     };
 }
@@ -318,13 +318,19 @@ void display() {
     chrono::duration<float> time_span = chrono::duration_cast<chrono::duration<float>>(temp - timePoint);
     frameTime = time_span.count();
     
-    fprintf(stderr, "Step = %d, time = %.4g            \n", frameCount / 2, frameTime);
-    fprintf(stderr, "\x1b[%dA", opencl->printCount + 1);
+    if (config->verbose) {
+        fprintf(stderr, "Step = %d, time = %.4g            \n", frameCount / 2, frameTime);
+        fprintf(stderr, "\x1b[%dA", opencl->printCount + 1);
+    }
+
     timePoint = temp;
 }
 
 void cleanAll() {
-    fprintf(stderr, "\n\n\n\n\n\n\nExiting\n");
+    if (config->verbose) {
+        fprintf(stderr, "\n\n\n\n\n\n\n");
+    }
+    fprintf(stderr, "Exiting\n");
     destroyFractalWindow();
     opencl->cleanup();
 }

@@ -178,18 +178,21 @@ void OpenCl::step(string name, int count) {
     }
 
     getTime();
-    fprintf(stderr, "%s ", name.c_str());
-    for (int i = strlen(name.c_str()); i < 30; i++) {
-        fprintf(stderr, " ");
-    }
 
-    fprintf(stderr, "Chrono = %09.1fμs", chronoTime);
+    if (verbose) {
+        fprintf(stderr, "%s ", name.c_str());
+        for (int i = strlen(name.c_str()); i < 30; i++) {
+            fprintf(stderr, " ");
+        }
     
-    if (profile) {
-        fprintf(stderr, "OpenCL = %09.1fμs", clTime);
+        fprintf(stderr, "Chrono = %09.1fμs", chronoTime);
+        
+        if (profile) {
+            fprintf(stderr, "OpenCL = %09.1fμs", clTime);
+        }
+    
+        fprintf(stderr, "\n");
     }
-
-    fprintf(stderr, "\n");
     printCount++;
 }
 
