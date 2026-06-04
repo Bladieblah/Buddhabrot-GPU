@@ -309,11 +309,18 @@ inline void resetParticle(
     Particle *particle,
     global float2 *path,
     unsigned int pathStart,
+    global float2 *seeds,
+    unsigned int seedCount,
     global ulong *randomState,
     global ulong *randomIncrement,
     int x
 ) {
-    float2 newOffset = getNewPos(randomState, randomIncrement, x);
+    float2 newOffset;
+    if (seedCount > 0) {
+        newOffset = getNewPos(randomState, randomIncrement, x);
+    } else {
+        newOffset = seeds[randint(randomState, randomIncrement, x, seedCount)];
+    }
 
     particle->iterCount = 1;
     particle->bestIter = 1;
@@ -361,6 +368,8 @@ inline void mutateParticle(
     Particle *particle,
     global float2 *path,
     unsigned int pathStart,
+    global float2 *seeds,
+    unsigned int seedCount,
     global ulong *randomState,
     global ulong *randomIncrement,
     int x,
@@ -375,54 +384,42 @@ inline void mutateParticle(
         particle->prevScore *= 0.90;
     }
 
-    float2 newOffset;
     if (uniformRand(randomState, randomIncrement, x) < 0.98) {
         float range = getRange(particle->iterCount);
         // float range = 0.01;
 
-        newOffset = (float2)(
+        float2 newOffset = (float2)(
             particle->prevOffset.x + range * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f),
             particle->prevOffset.y + range * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f)
         );
+        particle->pos = newOffset;
+        particle->offset = newOffset;
     } else {
-        // const unsigned int nParticles = get_global_size(0);
-        // const int y = randint(randomState, randomIncrement, x, nParticles);
-        // float threshold = (particles[y].prevScore / (particle->prevScore + 1) - 5) * 0.2;
-        // if (uniformRand(randomState, randomIncrement, x) < threshold) {
-        //     float range = getRange(particles[y].iterCount);
-        //     newOffset = (float2)(
-        //         particles[y].prevOffset.x + range * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f),
-        //         particles[y].prevOffset.y + range * view.scaleY * clamp(gaussianRand(randomState, randomIncrement, x), -5.f, 5.f)
-        //     );
-        // } else {
-        //     newOffset = getNewPos(randomState, randomIncrement, x);
-        // }
-
-        // resetParticle(&particle, path, pathStart, randomState, randomIncrement, x);
+        resetParticle(particle, path, pathStart, seeds, seedCount, randomState, randomIncrement, x);
     }
 
-    particle->pos = newOffset;
-    particle->offset = newOffset;
     particle->iterCount = 1;
     particle->score = 0;
 
-    path[pathStart] = newOffset;
+    path[pathStart] = particle->offset;
 }
 
 __kernel void initParticles(
     global Particle *particles,
     global unsigned int *threshold,
     global float2 *path,
+    global float2 *seeds,
     global ulong *randomState,
     global ulong *randomIncrement,
-    unsigned int thresholdCount
+    unsigned int thresholdCount,
+    unsigned int seedCount
 ) {
     const int x = get_global_id(0);
     
     Particle foo = {{0,0}, {0,0}, {0,0}, 1, 1, 2, 2};
 
     Particle tmp = particles[x];
-    resetParticle(&tmp, path, x * threshold[thresholdCount - 1], randomState, randomIncrement, x);
+    resetParticle(&tmp, path, x * threshold[thresholdCount - 1], seeds, seedCount, randomState, randomIncrement, x);
     particles[x] = tmp;
 }
 
@@ -473,9 +470,11 @@ __kernel void mandelStep_##PATH_EXT##_##SCORE_EXT( \
     global unsigned int *count, \
     global unsigned int *threshold, \
     global float2 *path, \
+    global float2 *seeds, \
     global ulong *randomState, \
     global ulong *randomIncrement, \
     unsigned int thresholdCount, \
+    unsigned int seedCount, \
     ViewSettings view \
 ) { \
     const int x = get_global_id(0); \
@@ -503,11 +502,11 @@ __kernel void mandelStep_##PATH_EXT##_##SCORE_EXT( \
             int thresholdIndex = matchThreshold(tmp, threshold, thresholdCount); \
             addPath_##PATH_EXT(&tmp, path, count, threshold, thresholdCount, pathIndex, thresholdIndex, view); \
             SCORE_##SCORE_EXT \
-            mutateParticle(particles, &tmp, path, pathIndex, randomState, randomIncrement, x, view); \
+            mutateParticle(particles, &tmp, path, pathIndex, seeds, seedCount, randomState, randomIncrement, x, view); \
         } \
 \
         else if (tmp.iterCount >= maxLength) { \
-            resetParticle(&tmp, path, pathIndex, randomState, randomIncrement, x); \
+            resetParticle(&tmp, path, pathIndex, seeds, seedCount, randomState, randomIncrement, x); \
         } \
     } \
 \
