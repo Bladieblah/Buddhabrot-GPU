@@ -281,12 +281,25 @@ inline bool isValid(float2 coord) {
     return true;
 }
 
+__constant float DELTA_SEED = 0.000732600732601; // 3 / 4095
+
 inline float2 getNewPos(
+    global float2 *seeds,
+    unsigned int seedCount,
     global ulong *randomState,
     global ulong *randomIncrement,
     int x
 ) {
-    float2 newOffset = (float2)(
+    float2 newOffset;
+    
+    if (seedCount > 0) {
+        newOffset = seeds[randint(randomState, randomIncrement, x, seedCount)];
+        newOffset.x += DELTA_SEED * (uniformRand(randomState, randomIncrement, x) - 0.5);
+        newOffset.y += DELTA_SEED * (uniformRand(randomState, randomIncrement, x) - 0.5);
+        return newOffset;
+    }
+
+    newOffset = (float2)(
         (9. * uniformRand(randomState, randomIncrement, x) - 5.2),
         (6. * uniformRand(randomState, randomIncrement, x) - 3.)
     );
@@ -305,8 +318,6 @@ inline float2 getNewPos(
     return newOffset;
 }
 
-__constant float DELTA_SEED = 0.000732600732601; // 3 / 4095
-
 inline void resetParticle(
     Particle *particle,
     global float2 *path,
@@ -317,15 +328,7 @@ inline void resetParticle(
     global ulong *randomIncrement,
     int x
 ) {
-    float2 newOffset;
-    
-    if (seedCount > 0) {
-        newOffset = seeds[randint(randomState, randomIncrement, x, seedCount)];
-        newOffset.x += DELTA_SEED * (uniformRand(randomState, randomIncrement, x) - 0.5);
-        newOffset.y += DELTA_SEED * (uniformRand(randomState, randomIncrement, x) - 0.5);
-    } else {
-        newOffset = getNewPos(randomState, randomIncrement, x);
-    }
+    float2 newOffset = getNewPos(seeds, seedCount, randomState, randomIncrement, x);
 
     particle->iterCount = 1;
     particle->bestIter = 1;
@@ -365,7 +368,7 @@ inline int getScore(
 }
 
 inline float getRange(uint iterCount) {
-    return clamp(17 * pow(1 + iterCount, -1.), 1e-5, 0.1);
+    return clamp(17 * pow(1 + iterCount, -1.), 1e-5, 0.1) / 10.;
 }
 
 inline void mutateParticle(
@@ -496,9 +499,11 @@ __kernel void mandelStep_##PATH_EXT##_##SCORE_EXT( \
         if (tmp.prevScore < 10 && (tmp.iterCount > MAX_CONVERGE_STEPS || escaped)) { \
             tmp.prevScore = getScore(&tmp, path, pathIndex, view); \
             if (tmp.prevScore < 10) { \
+                float2 newOffset; \
+                newOffset = getNewPos(seeds, seedCount, randomState, randomIncrement, x); \
                 tmp.prevOffset = tmp.offset; \
-                tmp.pos = getNewPos(randomState, randomIncrement, x); \
-                tmp.offset = tmp.pos; \
+                tmp.pos = newOffset; \
+                tmp.offset = newOffset; \
                 tmp.iterCount = 1; \
                 tmp.score = 0; \
             } \
@@ -569,6 +574,18 @@ __constant float COLOR_SCHEME[3][3] = {
     {0.0, 0.0, 0.6,},
 };
 
+// __constant float COLOR_SCHEME[3][3] = {
+//     {0.4, 0.5, 0.4,},
+//     {0.1, 0.0, 0.4,},
+//     {0.0, 0.1, 0.7,},
+// };
+
+// __constant float COLOR_SCHEME[3][3] = {
+//     {1.0, 0.0, 0.0,},
+//     {0.0, 1.0, 0.0,},
+//     {0.0, 0.0, 1.0,},
+// };
+
 // Green-blue colorscheme
 // __constant float COLOR_SCHEME[3][3] = {
 //     {0.0, 0.1, 0.1,},
@@ -609,7 +626,6 @@ __constant float IMAGE_MAX = 4294967295.0;
         image[imageOffset + j] = 0;
 
         for (uint i = 0; i < thresholdCount; i++) {
-            // float countFraction = (float)max(maximum[i] / CLAMPS[i], count[i * pixelCount + pixelOffset]) / (float)maximum[i];
             float countFraction = (float)count[i * pixelCount + pixelOffset] / (float)(maximum[i] + 1);
             image[imageOffset + j] += (int)(COLOR_SCHEME[i][j] * sqrt(countFraction) * IMAGE_MAX);
         }

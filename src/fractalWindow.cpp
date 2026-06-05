@@ -82,6 +82,7 @@ void showSeeds() {
 }
 
 void drawGrid() {
+    glColor3f(1,1,1);
     glBegin(GL_LINES);
         glVertex2f(-1,0); glVertex2f(1,0);
         glVertex2f(-1,0.5); glVertex2f(1,0.5);
@@ -438,7 +439,7 @@ void updateSeeds() {
         }
     );
 
-    seedCount = bisect_distances(radius);
+    seedCount = bisect_distances(fmax(radius, 0.001));
     fprintf(stderr, "Found %d seeds\n", seedCount);
     if (seedCount >= config->max_seeds) {
         fprintf(stderr, "Not using seeds\n");
@@ -568,7 +569,7 @@ void keyPressedFW(GLFWwindow* window, unsigned int key) {
                 viewStackFW.pop();
 
                 for (string name : getMandelNames()) {
-                    opencl->setKernelArg(name, 7, sizeof(ViewSettings), (void*)&viewFW);
+                    opencl->setKernelArg(name, 9, sizeof(ViewSettings), (void*)&viewFW);
                 }
 
                 opencl->step("resetCount");
